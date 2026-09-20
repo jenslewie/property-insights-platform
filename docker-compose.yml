@@ -1,0 +1,9 @@
+services:
+  house-price-model-service:
+    build:
+      context: .
+      dockerfile: house-price-model-service/Dockerfile
+    environment:
+      BATCH_PREDICTION_LIMIT: ${BATCH_PREDICTION_LIMIT:-20}
+    ports:
+      - "9000:9000"

@@ -1,0 +1,15 @@
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# IDE
+.idea/
+
+# macOS
+.DS_Store
+
+# Generated ML artifacts
+house-price-model-service/artifacts/*
+!house-price-model-service/artifacts/.gitkeep
