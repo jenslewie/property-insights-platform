@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -54,8 +55,8 @@ def test_model_info_returns_training_metadata(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["model_type"] == "LinearRegression"
-    assert body["model_version"] == "1.0"
-    assert body["training_samples"] == 8
+    assert body["model_version"] == "1.0.0"
+    assert body["training_samples"] == 10
     assert body["coefficients"] == pytest.approx(
         {
             "square_footage": 100.0,
@@ -66,6 +67,19 @@ def test_model_info_returns_training_metadata(client: TestClient) -> None:
             "distance_to_city_center": -500.0,
             "school_rating": 3000.0,
         }
+    )
+    assert body["evaluation_method"] == {
+        "type": "RepeatedKFold",
+        "n_splits": 5,
+        "n_repeats": 10,
+        "shuffle": None,
+        "random_state": 42,
+    }
+    assert body["performance_metrics"].keys() == {"r2", "mae", "rmse"}
+    assert all(
+        math.isfinite(summary[value_name])
+        for summary in body["performance_metrics"].values()
+        for value_name in ("mean", "std")
     )
 
 
@@ -94,7 +108,7 @@ def test_openapi_provides_response_examples_for_every_endpoint() -> None:
     assert schemas["ModelInfoResponse"]["example"]
     assert schemas["PredictionResponse"]["example"] == {
         "count": 2,
-        "predictions": [250879.73, 419384.12],
+        "predictions": [250879.73, 364551.64],
     }
 
 

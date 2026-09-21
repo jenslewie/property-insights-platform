@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from app.model.features import FEATURE_NAMES
-from training.train import train_model, validate_dataset
+from training.train import evaluate_model, train_model, validate_dataset
 
 
 def test_validate_dataset_rejects_empty_dataframe() -> None:
@@ -20,6 +20,41 @@ def test_validate_dataset_reports_missing_required_columns(training_csv: Path) -
 
     with pytest.raises(ValueError, match=r"Dataset is missing required columns: \['price'\]"):
         validate_dataset(dataframe)
+
+
+def test_train_model_rejects_dataset_with_fewer_than_ten_rows(
+    training_csv: Path, tmp_path: Path
+) -> None:
+    undersized_csv = tmp_path / "undersized.csv"
+    pd.read_csv(training_csv).head(9).to_csv(undersized_csv, index=False)
+
+    with pytest.raises(ValueError, match="Dataset must contain at least 10 rows"):
+        train_model(data_path=undersized_csv, artifacts_dir=tmp_path / "output")
+
+
+def test_evaluate_model_aggregates_cross_validation_scores(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cross_validation_results = {
+        "test_r2": pd.Series([0.2, 0.6]),
+        "test_mae": pd.Series([-2.0, -4.0]),
+        "test_rmse": pd.Series([-3.0, -7.0]),
+    }
+    monkeypatch.setattr(
+        "training.train.cross_validate",
+        lambda *_args, **_kwargs: cross_validation_results,
+    )
+
+    metrics = evaluate_model(
+        model=object(),
+        X=pd.DataFrame(),
+        y=pd.Series(dtype=float),
+        cv=object(),
+    )
+
+    assert metrics["r2"] == pytest.approx({"mean": 0.4, "std": 0.2})
+    assert metrics["mae"] == pytest.approx({"mean": 3.0, "std": 1.0})
+    assert metrics["rmse"] == pytest.approx({"mean": 5.0, "std": 2.0})
 
 
 def test_train_model_writes_usable_artifacts_and_complete_metadata(
@@ -36,11 +71,21 @@ def test_train_model_writes_usable_artifacts_and_complete_metadata(
     assert json.loads(metadata_path.read_text(encoding="utf-8")) == metadata
 
     assert metadata["model_type"] == "LinearRegression"
-    assert metadata["model_version"] == "1.0"
+    assert metadata["model_version"] == "1.0.0"
     assert metadata["feature_names"] == list(FEATURE_NAMES)
-    assert metadata["training_samples"] == 8
-    assert metadata["evaluation_method"] == "5-fold cross-validation"
-    assert all(math.isfinite(value) for value in metadata["performance_metrics"].values())
+    assert metadata["training_samples"] == 10
+    assert metadata["evaluation_method"] == {
+        "type": "RepeatedKFold",
+        "n_splits": 5,
+        "n_repeats": 10,
+        "random_state": 42,
+    }
+    assert metadata["performance_metrics"].keys() == {"r2", "mae", "rmse"}
+    for metric in metadata["performance_metrics"].values():
+        assert metric.keys() == {"mean", "std"}
+        assert math.isfinite(metric["mean"])
+        assert math.isfinite(metric["std"])
+        assert metric["std"] >= 0
 
     model = joblib.load(model_path)
     sample = pd.DataFrame(
@@ -58,3 +103,29 @@ def test_train_model_writes_usable_artifacts_and_complete_metadata(
         columns=list(FEATURE_NAMES),
     )
     assert float(model.predict(sample)[0]) == pytest.approx(211250.0)
+
+
+def test_train_model_supports_kfold_evaluation(training_csv: Path, tmp_path: Path) -> None:
+    metadata = train_model(
+        data_path=training_csv,
+        artifacts_dir=tmp_path / "output",
+        evaluation_method="kfold",
+    )
+
+    assert metadata["evaluation_method"] == {
+        "type": "KFold",
+        "n_splits": 5,
+        "shuffle": True,
+        "random_state": 42,
+    }
+
+
+def test_train_model_rejects_unsupported_evaluation_method(
+    training_csv: Path, tmp_path: Path
+) -> None:
+    with pytest.raises(ValueError, match="Unsupported evaluation method: leave-one-out"):
+        train_model(
+            data_path=training_csv,
+            artifacts_dir=tmp_path / "output",
+            evaluation_method="leave-one-out",
+        )

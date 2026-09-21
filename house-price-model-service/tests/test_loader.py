@@ -33,5 +33,5 @@ def test_get_model_bundle_loads_configured_artifacts(configured_artifacts: Path)
     bundle = get_model_bundle()
 
     assert bundle.metadata["model_type"] == "LinearRegression"
-    assert bundle.metadata["training_samples"] == 8
+    assert bundle.metadata["training_samples"] == 10
     assert bundle.model.n_features_in_ == 7

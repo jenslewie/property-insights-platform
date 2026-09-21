@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: house-price-model-service/Dockerfile
+      args:
+        EVALUATION_METHOD: ${EVALUATION_METHOD:-repeated-kfold}
     environment:
       BATCH_PREDICTION_LIMIT: ${BATCH_PREDICTION_LIMIT:-20}
     ports:

@@ -53,8 +53,8 @@ Train with the default dataset at `../data/house-price-dataset.csv`:
 uv run python -m training.train
 ```
 
-The command evaluates the model using shuffled five-fold cross-validation, retrains it on the full
-dataset, and writes:
+The command evaluates the model using repeated five-fold cross-validation with ten repeats,
+retrains it on the full dataset, and writes:
 
 ```text
 artifacts/model.joblib
@@ -69,12 +69,16 @@ Use different input and output locations when needed:
 ```bash
 uv run python -m training.train \
   --data-path /path/to/training-data.csv \
-  --artifacts-dir /path/to/artifacts
+  --artifacts-dir /path/to/artifacts \
+  --evaluation-method kfold
 ```
 
+Use `--evaluation-method repeated-kfold` for the default repeated strategy or `kfold` for a single
+shuffled five-fold evaluation.
+
 The training CSV must contain the seven input fields documented under
-[Prediction input](#prediction-input) and a `price` target column. It must contain at least five rows
-for five-fold cross-validation.
+[Prediction input](#prediction-input) and a `price` target column. It must contain at least ten rows
+so every test fold has at least two samples for R² evaluation.
 
 ### Run the API
 

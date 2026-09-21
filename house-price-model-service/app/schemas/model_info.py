@@ -1,10 +1,23 @@
 from pydantic import BaseModel, ConfigDict
 
 
+class MetricSummary(BaseModel):
+    mean: float
+    std: float
+
+
 class PerformanceMetrics(BaseModel):
-    r2: float
-    mae: float
-    rmse: float
+    r2: MetricSummary
+    mae: MetricSummary
+    rmse: MetricSummary
+
+
+class EvaluationMethod(BaseModel):
+    type: str
+    n_splits: int
+    n_repeats: int | None = None
+    shuffle: bool | None = None
+    random_state: int | None = None
 
 
 class ModelInfoResponse(BaseModel):
@@ -16,7 +29,7 @@ class ModelInfoResponse(BaseModel):
     coefficients: dict[str, float]
 
     performance_metrics: PerformanceMetrics
-    evaluation_method: str
+    evaluation_method: EvaluationMethod
 
     training_samples: int
     trained_at: str
@@ -25,7 +38,7 @@ class ModelInfoResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "model_type": "LinearRegression",
-                "model_version": "1.0",
+                "model_version": "1.0.0",
                 "feature_names": [
                     "square_footage",
                     "bedrooms",
@@ -35,20 +48,29 @@ class ModelInfoResponse(BaseModel):
                     "distance_to_city_center",
                     "school_rating",
                 ],
-                "intercept": 12345.67,
+                "intercept": -299786.6105325343,
                 "coefficients": {
-                    "square_footage": 100.23,
-                    "bedrooms": 2500.12,
-                    "bathrooms": 5000.34,
-                    "year_built": 200.12,
-                    "lot_size": 3.21,
-                    "distance_to_city_center": -2100.32,
-                    "school_rating": 8500.45,
+                    "square_footage": -102.91639966468526,
+                    "bedrooms": -8447.783942891525,
+                    "bathrooms": 7436.933883438714,
+                    "year_built": 112.38404466144576,
+                    "lot_size": 39.29876441817834,
+                    "distance_to_city_center": 16810.213682632897,
+                    "school_rating": 21062.08340875214,
                 },
-                "performance_metrics": {"r2": 0.98, "mae": 6000.2, "rmse": 8000.4},
-                "evaluation_method": "5-fold cross-validation",
+                "performance_metrics": {
+                    "r2": {"mean": 0.9693933993479346, "std": 0.06606456287395827},
+                    "mae": {"mean": 7496.85654161174, "std": 1971.034619217675},
+                    "rmse": {"mean": 10517.38293102776, "std": 3737.1815814746037},
+                },
+                "evaluation_method": {
+                    "type": "RepeatedKFold",
+                    "n_splits": 5,
+                    "n_repeats": 10,
+                    "random_state": 42,
+                },
                 "training_samples": 50,
-                "trained_at": "2026-09-20T03:11:38.322937+00:00",
+                "trained_at": "2026-09-20T16:36:58.253679+00:00",
             }
         }
     )

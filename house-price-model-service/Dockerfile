@@ -7,6 +7,7 @@ COPY --from=uv /uv /uvx /bin/
 ENV UV_LINK_MODE=copy
 
 ARG SERVICE_DIR=house-price-model-service
+ARG EVALUATION_METHOD=repeated-kfold
 
 WORKDIR /workspace/${SERVICE_DIR}
 
@@ -18,7 +19,7 @@ COPY data /workspace/data
 COPY ${SERVICE_DIR}/app ./app
 COPY ${SERVICE_DIR}/training ./training
 
-RUN mkdir -p artifacts && uv run --no-sync python -m training.train
+RUN mkdir -p artifacts && uv run --no-sync python -m training.train --evaluation-method ${EVALUATION_METHOD}
 
 
 FROM python:3.13-slim AS runtime
