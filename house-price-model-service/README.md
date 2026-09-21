@@ -1,7 +1,7 @@
 # House Price Model Service
 
-FastAPI service that trains and serves a scikit-learn `LinearRegression` model for house-price
-prediction.
+FastAPI service that trains and serves selectable scikit-learn `LinearRegression`, `Ridge`, or
+`Lasso` models for house-price prediction.
 
 The service trains from the repository's housing dataset, stores the fitted model and its metadata
 as local artifacts, and loads those artifacts when the API starts.
@@ -53,16 +53,16 @@ Train with the default dataset at `../data/house-price-dataset.csv`:
 uv run python -m training.train
 ```
 
-The command evaluates the model using repeated five-fold cross-validation with ten repeats,
-retrains it on the full dataset, and writes:
+The command trains `LinearRegression` by default, evaluates it using repeated five-fold
+cross-validation with ten repeats, retrains it on the full dataset, and writes:
 
 ```text
 artifacts/model.joblib
 artifacts/model_metadata.json
 ```
 
-The metadata contains the feature names, intercept, coefficients, R², MAE, RMSE, training sample
-count, evaluation method, model version, and training timestamp.
+The metadata contains the model configuration, feature names, intercept, coefficients, R², MAE,
+RMSE, training sample count, evaluation method, model version, and training timestamp.
 
 Use different input and output locations when needed:
 
@@ -75,6 +75,17 @@ uv run python -m training.train \
 
 Use `--evaluation-method repeated-kfold` for the default repeated strategy or `kfold` for a single
 shuffled five-fold evaluation.
+
+Select a regularized model with `--model-type` and optionally override its regularization strength:
+
+```bash
+uv run python -m training.train --model-type ridge --alpha 0.5
+uv run python -m training.train --model-type lasso --alpha 10
+```
+
+Supported model types are `linear-regression`, `ridge`, and `lasso`. Ridge defaults to an alpha of
+`0.1`; Lasso defaults to `33.0`. Alpha must be finite and greater than zero, and it is rejected for
+linear regression. Ridge and Lasso use `StandardScaler` inside the saved model pipeline.
 
 The training CSV must contain the seven input fields documented under
 [Prediction input](#prediction-input) and a `price` target column. It must contain at least ten rows
@@ -237,6 +248,19 @@ The builder stage installs locked production dependencies, trains the model from
 dataset, and copies the resulting artifacts into the runtime image. Development dependencies and
 source training data are not copied into the runtime image.
 
+The image defaults to Ridge with alpha `0.1`. Override the build-time model or evaluation settings
+with build arguments:
+
+```bash
+docker build \
+  --file house-price-model-service/Dockerfile \
+  --build-arg MODEL_TYPE=lasso \
+  --build-arg MODEL_ALPHA=10 \
+  --build-arg EVALUATION_METHOD=kfold \
+  --tag house-price-model-service:latest \
+  .
+```
+
 Run the image:
 
 ```bash
@@ -256,11 +280,12 @@ docker compose build house-price-model-service
 docker compose up house-price-model-service
 ```
 
-Compose defaults the batch limit to `20`. Override it through the shell environment or a root
-`.env` file, for example:
+Compose defaults to Ridge, repeated K-fold evaluation, and a batch limit of `20`. Override these
+through the shell environment or a root `.env` file, for example:
 
 ```bash
-BATCH_PREDICTION_LIMIT=50 docker compose up house-price-model-service
+MODEL_TYPE=lasso MODEL_ALPHA=10 BATCH_PREDICTION_LIMIT=50 \
+  docker compose up house-price-model-service
 ```
 
 Stop it with:

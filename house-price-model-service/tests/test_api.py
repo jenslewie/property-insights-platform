@@ -5,6 +5,8 @@ from fastapi.testclient import TestClient
 import pytest
 
 from app.main import app
+from app.model.loader import get_model_bundle
+from training.train import train_model
 
 
 SINGLE_PROPERTY = {
@@ -56,6 +58,12 @@ def test_model_info_returns_training_metadata(client: TestClient) -> None:
     body = response.json()
     assert body["model_type"] == "LinearRegression"
     assert body["model_version"] == "1.0.0"
+    assert body["model_config"] == {
+        "type": "LinearRegression",
+        "alpha": None,
+        "max_iter": None,
+        "scaler": None,
+    }
     assert body["training_samples"] == 10
     assert body["coefficients"] == pytest.approx(
         {
@@ -81,6 +89,39 @@ def test_model_info_returns_training_metadata(client: TestClient) -> None:
         for summary in body["performance_metrics"].values()
         for value_name in ("mean", "std")
     )
+
+
+def test_api_loads_and_serves_regularized_model_pipeline(
+    training_csv: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifacts_dir = tmp_path / "ridge-artifacts"
+    train_model(
+        data_path=training_csv,
+        artifacts_dir=artifacts_dir,
+        model_type="ridge",
+        alpha=2.5,
+        evaluation_method="kfold",
+    )
+    monkeypatch.setenv("MODEL_ARTIFACTS_DIR", str(artifacts_dir))
+    get_model_bundle.cache_clear()
+
+    try:
+        with TestClient(app, raise_server_exceptions=False) as ridge_client:
+            model_info_response = ridge_client.get("/model-info")
+            prediction_response = ridge_client.post("/predict", json=SINGLE_PROPERTY)
+    finally:
+        get_model_bundle.cache_clear()
+
+    assert model_info_response.status_code == 200
+    assert model_info_response.json()["model_config"] == {
+        "type": "Ridge",
+        "alpha": 2.5,
+        "max_iter": None,
+        "scaler": "StandardScaler",
+    }
+    assert prediction_response.status_code == 200
+    assert prediction_response.json()["count"] == 1
+    assert math.isfinite(prediction_response.json()["predictions"][0])
 
 
 def test_openapi_provides_explicit_endpoint_documentation() -> None:

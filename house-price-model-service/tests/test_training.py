@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from app.model.features import FEATURE_NAMES
-from training.train import evaluate_model, train_model, validate_dataset
+from training.train import create_model, evaluate_model, train_model, validate_dataset
 
 
 def test_validate_dataset_rejects_empty_dataframe() -> None:
@@ -55,6 +55,25 @@ def test_evaluate_model_aggregates_cross_validation_scores(
     assert metrics["r2"] == pytest.approx({"mean": 0.4, "std": 0.2})
     assert metrics["mae"] == pytest.approx({"mean": 3.0, "std": 1.0})
     assert metrics["rmse"] == pytest.approx({"mean": 5.0, "std": 2.0})
+
+
+@pytest.mark.parametrize("model_type", ["lasso", "ridge"])
+@pytest.mark.parametrize("alpha", [0.0, -1.0, float("nan"), float("inf")])
+def test_create_model_rejects_non_positive_or_non_finite_alpha(
+    model_type: str, alpha: float
+) -> None:
+    with pytest.raises(ValueError, match="Alpha must be a finite number greater than 0"):
+        create_model(model_type, alpha)
+
+
+def test_create_model_rejects_alpha_for_linear_regression() -> None:
+    with pytest.raises(ValueError, match="Alpha is not supported for linear regression"):
+        create_model("linear-regression", 0.1)
+
+
+def test_create_model_rejects_unsupported_model_type() -> None:
+    with pytest.raises(ValueError, match="Unsupported model type: random-forest"):
+        create_model("random-forest")
 
 
 def test_train_model_writes_usable_artifacts_and_complete_metadata(
@@ -118,6 +137,68 @@ def test_train_model_supports_kfold_evaluation(training_csv: Path, tmp_path: Pat
         "shuffle": True,
         "random_state": 42,
     }
+
+
+@pytest.mark.parametrize(
+    ("model_type", "alpha", "expected_config"),
+    [
+        (
+            "lasso",
+            None,
+            {
+                "type": "Lasso",
+                "alpha": 33.0,
+                "max_iter": 10_000,
+                "scaler": "StandardScaler",
+            },
+        ),
+        (
+            "lasso",
+            2.5,
+            {
+                "type": "Lasso",
+                "alpha": 2.5,
+                "max_iter": 10_000,
+                "scaler": "StandardScaler",
+            },
+        ),
+        (
+            "ridge",
+            None,
+            {"type": "Ridge", "alpha": 0.1, "scaler": "StandardScaler"},
+        ),
+        (
+            "ridge",
+            2.5,
+            {"type": "Ridge", "alpha": 2.5, "scaler": "StandardScaler"},
+        ),
+    ],
+)
+def test_train_model_supports_regularized_models_and_reports_original_scale_parameters(
+    training_csv: Path,
+    tmp_path: Path,
+    model_type: str,
+    alpha: float | None,
+    expected_config: dict[str, object],
+) -> None:
+    artifacts_dir = tmp_path / model_type
+
+    metadata = train_model(
+        data_path=training_csv,
+        artifacts_dir=artifacts_dir,
+        model_type=model_type,
+        alpha=alpha,
+        evaluation_method="kfold",
+    )
+
+    assert metadata["model_type"] == expected_config["type"]
+    assert metadata["model_config"] == expected_config
+
+    features = pd.read_csv(training_csv)[list(FEATURE_NAMES)]
+    reported_predictions = features.dot(pd.Series(metadata["coefficients"])) + metadata["intercept"]
+    model = joblib.load(artifacts_dir / "model.joblib")
+
+    assert model.predict(features) == pytest.approx(reported_predictions.to_numpy())
 
 
 def test_train_model_rejects_unsupported_evaluation_method(

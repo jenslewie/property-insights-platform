@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MetricSummary(BaseModel):
@@ -20,9 +20,18 @@ class EvaluationMethod(BaseModel):
     random_state: int | None = None
 
 
+class TrainingConfig(BaseModel):
+    alpha: float | None = None
+    max_iter: int | None = None
+    scaler: str | None = None
+
+
 class ModelInfoResponse(BaseModel):
     model_type: str
     model_version: str
+
+    training_config: TrainingConfig = Field(alias="model_config")
+
     feature_names: list[str]
 
     intercept: float
@@ -37,8 +46,9 @@ class ModelInfoResponse(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "model_type": "LinearRegression",
+                "model_type": "Ridge",
                 "model_version": "1.0.0",
+                "model_config": {"alpha": 1.0, "scaler": "standard"},
                 "feature_names": [
                     "square_footage",
                     "bedrooms",

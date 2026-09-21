@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: house-price-model-service/Dockerfile
       args:
+        MODEL_TYPE: ${MODEL_TYPE:-ridge}
+        MODEL_ALPHA: ${MODEL_ALPHA:-}
         EVALUATION_METHOD: ${EVALUATION_METHOD:-repeated-kfold}
     environment:
       BATCH_PREDICTION_LIMIT: ${BATCH_PREDICTION_LIMIT:-20}

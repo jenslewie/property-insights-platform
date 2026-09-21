@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 import joblib
-from sklearn.linear_model import LinearRegression
 
 
 SERVICE_ROOT = Path(__file__).resolve().parents[2]
@@ -16,7 +15,7 @@ DEFAULT_ARTIFACTS_DIR = SERVICE_ROOT / "artifacts"
 
 @dataclass(frozen=True)
 class ModelBundle:
-    model: LinearRegression
+    model: Any
     metadata: dict[str, Any]
 
 
