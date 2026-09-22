@@ -1,0 +1,26 @@
+[project]
+name = "property-estimator-service"
+version = "1.0.0"
+description = "Property value estimator API"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "fastapi>=0.141.1,<0.142",
+    "httpx>=0.28.1,<0.29",
+    "uvicorn[standard]>=0.53.0,<0.54",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1,<9.2",
+    "ruff>=0.15.22,<0.16",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
