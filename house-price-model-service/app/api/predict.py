@@ -1,15 +1,13 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, status
 
 from app.config import get_batch_prediction_limit
-from app.model.loader import get_model_bundle
 from app.model.predictor import predict_prices
-from app.schemas.health import HealthResponse
-from app.schemas.model_info import ModelInfoResponse
-from app.schemas.prediction import HousingFeatures, PredictionResponse
+from app.schemas.prediction import HTTPValidationError, HousingFeatures, PredictionResponse
 
-router = APIRouter()
+
+router = APIRouter(prefix="/api/v1", tags=["Prediction"])
 
 PREDICTION_REQUEST_EXAMPLES = {
     "single_property": {
@@ -77,55 +75,25 @@ PREDICTION_VALIDATION_RESPONSE_EXAMPLES = {
 }
 
 
-@router.get(
-    "/health",
-    response_model=HealthResponse,
-    tags=["Health"],
-    summary="Check service health",
-    description="Confirms that the trained model bundle is available to the API.",
-    response_description="Current model service health.",
-)
-def health() -> HealthResponse:
-    get_model_bundle()
-
-    return HealthResponse(status="ok", model_loaded=True)
-
-
-@router.get(
-    "/model-info",
-    response_model=ModelInfoResponse,
-    tags=["Model"],
-    summary="Get model information",
-    description=(
-        "Returns the loaded model's metadata, feature names, coefficients, and evaluation metrics."
-    ),
-    response_description="Metadata for the loaded regression model.",
-)
-def model_info() -> ModelInfoResponse:
-    bundle = get_model_bundle()
-
-    return ModelInfoResponse.model_validate(bundle.metadata)
-
-
 @router.post(
     "/predict",
     response_model=PredictionResponse,
-    tags=["Prediction"],
+    status_code=status.HTTP_200_OK,
     summary="Predict house prices",
     description=(
         "Accepts one property or a batch of properties. Batch requests use the "
         "configured prediction limit, which defaults to 20 properties."
     ),
     response_description="Predicted house prices in request order.",
-    openapi_extra={
-        "responses": {
-            "422": {
-                "content": {
-                    "application/json": {
-                        "examples": PREDICTION_VALIDATION_RESPONSE_EXAMPLES,
-                    }
+    responses={
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "model": HTTPValidationError,
+            "description": "Validation Error",
+            "content": {
+                "application/json": {
+                    "examples": PREDICTION_VALIDATION_RESPONSE_EXAMPLES,
                 }
-            }
+            },
         }
     },
 )
@@ -142,7 +110,7 @@ def predict(
 
     if not items:
         raise HTTPException(
-            status_code=422,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=[
                 {
                     "type": "too_short",
@@ -156,7 +124,7 @@ def predict(
 
     if len(items) > batch_prediction_limit:
         raise HTTPException(
-            status_code=422,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=[
                 {
                     "type": "too_long",

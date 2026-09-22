@@ -2,46 +2,73 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class MetricSummary(BaseModel):
-    mean: float
-    std: float
+    mean: float = Field(description="Mean metric value across validation folds.")
+    std: float = Field(description="Population standard deviation across validation folds.")
 
 
 class PerformanceMetrics(BaseModel):
-    r2: MetricSummary
-    mae: MetricSummary
-    rmse: MetricSummary
+    r2: MetricSummary = Field(description="Coefficient of determination summary.")
+    mae: MetricSummary = Field(description="Mean absolute error summary.")
+    rmse: MetricSummary = Field(description="Root mean squared error summary.")
 
 
 class EvaluationMethod(BaseModel):
-    type: str
-    n_splits: int
-    n_repeats: int | None = None
-    shuffle: bool | None = None
-    random_state: int | None = None
+    type: str = Field(description="Cross-validation strategy name.")
+    n_splits: int = Field(description="Number of folds per cross-validation run.")
+    n_repeats: int | None = Field(
+        default=None,
+        description="Number of repeated cross-validation runs, when applicable.",
+    )
+    shuffle: bool | None = Field(
+        default=None,
+        description="Whether samples are shuffled before splitting, when applicable.",
+    )
+    random_state: int | None = Field(
+        default=None,
+        description="Random seed used by the cross-validation strategy, when applicable.",
+    )
 
 
 class TrainingConfig(BaseModel):
-    alpha: float | None = None
-    max_iter: int | None = None
-    scaler: str | None = None
+    alpha: float | None = Field(
+        default=None,
+        description="Regularization strength, when applicable.",
+    )
+    max_iter: int | None = Field(
+        default=None,
+        description="Maximum optimizer iterations, when applicable.",
+    )
+    scaler: str | None = Field(
+        default=None,
+        description="Feature scaler used by the model pipeline, when applicable.",
+    )
 
 
 class ModelInfoResponse(BaseModel):
-    model_type: str
-    model_version: str
+    model_type: str = Field(description="Regression model type.")
+    model_version: str = Field(description="Version of the trained model artifact.")
 
-    training_config: TrainingConfig = Field(alias="model_config")
+    training_config: TrainingConfig = Field(
+        alias="model_config",
+        description="Configuration used to train the model.",
+    )
 
-    feature_names: list[str]
+    feature_names: list[str] = Field(description="Input feature names in model order.")
 
-    intercept: float
-    coefficients: dict[str, float]
+    intercept: float = Field(description="Regression intercept in the original feature space.")
+    coefficients: dict[str, float] = Field(
+        description="Regression coefficient for each input feature."
+    )
 
-    performance_metrics: PerformanceMetrics
-    evaluation_method: EvaluationMethod
+    performance_metrics: PerformanceMetrics = Field(
+        description="Cross-validation performance metrics."
+    )
+    evaluation_method: EvaluationMethod = Field(
+        description="Cross-validation strategy used for evaluation."
+    )
 
-    training_samples: int
-    trained_at: str
+    training_samples: int = Field(description="Number of rows used to train the final model.")
+    trained_at: str = Field(description="UTC timestamp when the model artifact was trained.")
 
     model_config = ConfigDict(
         json_schema_extra={

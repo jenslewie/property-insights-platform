@@ -5,7 +5,9 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 
 from app.api.exception_handlers import request_validation_exception_handler
-from app.api.routes import router
+from app.api.health import router as health_router
+from app.api.model_info import router as model_info_router
+from app.api.predict import router as predict_router
 from app.config import get_batch_prediction_limit
 from app.model.loader import get_model_bundle
 
@@ -20,7 +22,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="House Price Prediction Model API",
-    description="Regression model API for predicting house prices.",
+    description="API for house price prediction and model information.",
     version="1.0.0",
     lifespan=lifespan,
     exception_handlers={
@@ -28,4 +30,6 @@ app = FastAPI(
     },
 )
 
-app.include_router(router)
+app.include_router(health_router)
+app.include_router(model_info_router)
+app.include_router(predict_router)

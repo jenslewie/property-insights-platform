@@ -129,8 +129,8 @@ BATCH_PREDICTION_LIMIT=50 \
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/health` | Confirms that the model bundle can be loaded. |
-| `GET` | `/model-info` | Returns model metadata, coefficients, and evaluation metrics. |
-| `POST` | `/predict` | Predicts prices for one property or a batch of properties. |
+| `GET` | `/api/v1/model-info` | Returns model metadata, coefficients, and performance metrics. |
+| `POST` | `/api/v1/predict` | Predicts prices for one property or a batch of properties. |
 
 ### Health
 
@@ -140,15 +140,14 @@ curl --fail http://localhost:9000/health
 
 ```json
 {
-  "status": "ok",
-  "model_loaded": true
+  "status": "UP"
 }
 ```
 
 ### Model information
 
 ```bash
-curl --fail http://localhost:9000/model-info
+curl --fail http://localhost:9000/api/v1/model-info
 ```
 
 The response contains the model type and version, ordered feature names, intercept, coefficient per
@@ -185,7 +184,7 @@ curl --fail \
     "distance_to_city_center": 4.1,
     "school_rating": 7.6
   }' \
-  http://localhost:9000/predict
+  http://localhost:9000/api/v1/predict
 ```
 
 Send a batch by wrapping property objects in a JSON array:

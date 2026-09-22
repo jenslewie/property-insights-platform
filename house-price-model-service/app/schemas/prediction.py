@@ -1,4 +1,6 @@
 from datetime import date
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -31,10 +33,7 @@ class HousingFeatures(BaseModel):
     distance_to_city_center: float = Field(
         ge=0,
         le=100,
-        description=(
-            "Distance from the property to the city center, using the same unit "
-            "as the training data."
-        ),
+        description=("Distance from the property to the city center."),
     )
     school_rating: float = Field(
         ge=0,
@@ -58,9 +57,26 @@ class HousingFeatures(BaseModel):
     )
 
 
+class ValidationError(BaseModel):
+    loc: list[str | int] = Field(description="Location of the invalid value in the request.")
+    msg: str = Field(description="Human-readable validation error message.")
+    type: str = Field(description="Machine-readable validation error type.")
+    input: Any = Field(default=None, description="Invalid input value, when available.")
+    ctx: dict[str, Any] | None = Field(
+        default=None,
+        description="Additional validation context, when available.",
+    )
+
+
+class HTTPValidationError(BaseModel):
+    detail: list[ValidationError] = Field(description="Validation errors found in the request.")
+
+
 class PredictionResponse(BaseModel):
-    count: int
-    predictions: list[float]
+    count: int = Field(description="Number of predicted prices returned.")
+    predictions: list[float] = Field(
+        description="Predicted prices in the same order as the request properties."
+    )
 
     model_config = ConfigDict(
         json_schema_extra={

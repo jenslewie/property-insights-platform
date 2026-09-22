@@ -1,5 +1,6 @@
 FROM ghcr.io/astral-sh/uv:0.12.17 AS uv
 
+
 FROM python:3.13-slim AS builder
 
 COPY --from=uv /uv /uvx /bin/
@@ -54,6 +55,6 @@ HEALTHCHECK \
     --timeout=3s \
     --start-period=5s \
     --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/health', timeout=2)"
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/health', timeout=2)"]
 
 CMD [".venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9000"]
