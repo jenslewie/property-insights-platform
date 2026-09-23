@@ -17,6 +17,9 @@ house-price-model-service/artifacts/
 **/.pytest_cache/
 **/.ruff_cache/
 
+# Maven build output
+market-analysis-service/target/
+
 # Node.js and Next.js build output for the portal
 property-insights-portal/node_modules/
 property-insights-portal/.next/

@@ -37,7 +37,7 @@ EXPOSE 9001
 HEALTHCHECK \
     --interval=30s \
     --timeout=3s \
-    --start-period=5s \
+    --start-period=10s \
     --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9001/health', timeout=2)"]
 
