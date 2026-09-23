@@ -107,9 +107,52 @@ def test_predict_maps_http_error_to_bad_gateway() -> None:
         asyncio.run(call_predict(PROPERTY, handler))
 
 
+@pytest.mark.parametrize("status_code", [201, 302])
+def test_predict_rejects_non_200_response(status_code: int) -> None:
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            status_code,
+            json={"count": 1, "predictions": [250_879.73]},
+        )
+
+    with pytest.raises(ModelServiceResponseError, match=f"HTTP {status_code}"):
+        asyncio.run(call_predict(PROPERTY, handler))
+
+
 def test_predict_rejects_malformed_json() -> None:
     async def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=b"not-json")
+
+    with pytest.raises(ModelServiceResponseError, match="invalid response"):
+        asyncio.run(call_predict(PROPERTY, handler))
+
+
+@pytest.mark.parametrize(
+    "response_body",
+    [
+        {"count": "1", "predictions": [250_879.73]},
+        {"count": 1, "predictions": ["250879.73"]},
+        {"count": 1, "predictions": [True]},
+    ],
+)
+def test_predict_rejects_response_type_coercion(response_body: dict[str, object]) -> None:
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=response_body)
+
+    with pytest.raises(ModelServiceResponseError, match="invalid response"):
+        asyncio.run(call_predict(PROPERTY, handler))
+
+
+def test_predict_rejects_unexpected_response_fields() -> None:
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "count": 1,
+                "predictions": [250_879.73],
+                "unexpected": "field",
+            },
+        )
 
     with pytest.raises(ModelServiceResponseError, match="invalid response"):
         asyncio.run(call_predict(PROPERTY, handler))

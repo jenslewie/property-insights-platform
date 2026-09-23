@@ -11,7 +11,11 @@ class PredictionResponse(BaseModel):
     count: int
     predictions: list[float]
 
-    model_config = ConfigDict(allow_inf_nan=False)
+    model_config = ConfigDict(
+        strict=True,
+        allow_inf_nan=False,
+        extra="forbid",
+    )
 
 
 class HousePriceClient:
@@ -53,7 +57,7 @@ class HousePriceClient:
                 "Housing price model service is unavailable."
             ) from exc
 
-        if response.is_error:
+        if response.status_code != httpx.codes.OK:
             raise ModelServiceResponseError(
                 f"Housing price model service returned HTTP {response.status_code}."
             )
