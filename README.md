@@ -8,8 +8,8 @@ Monorepo for the Property Insights Platform.
   training and serving house-price predictions.
 - [Property Estimator Service](property-estimator-service/README.md) — FastAPI orchestration
   service for single-property and batch price estimates.
-
-A frontend and one additional backend service are planned as the platform is developed.
+- [Property Insights Portal](property-insights-portal/README.md) — Next.js portal for property
+  estimation and market analysis.
 
 Build and start the current services from the repository root:
 
