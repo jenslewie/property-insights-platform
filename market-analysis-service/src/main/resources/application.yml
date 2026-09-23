@@ -1,0 +1,19 @@
+server:
+  port: 9002
+
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health
+
+spring:
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
+market:
+  dataset-path: ${MARKET_DATASET_PATH:../data/house-price-dataset.csv}
+  model-url: ${HOUSE_PRICE_MODEL_URL:http://localhost:9003}
+  model-timeout-seconds: ${HOUSE_PRICE_MODEL_TIMEOUT_SECONDS:5}
+  cache-maximum-size: ${MARKET_CACHE_MAXIMUM_SIZE:500}
