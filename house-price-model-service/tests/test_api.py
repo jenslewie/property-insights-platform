@@ -295,7 +295,10 @@ def test_openapi_describes_prediction_fields_without_assuming_units() -> None:
         "square_footage": "Total interior floor area of the property.",
         "bedrooms": "Number of bedrooms.",
         "bathrooms": "Number of bathrooms; fractional values are accepted.",
-        "year_built": "Year the property was built or is expected to be completed.",
+        "year_built": (
+            "Year the property was built or is expected to be completed. "
+            "Maximum is the current UTC year plus five."
+        ),
         "lot_size": "Total land area of the property.",
         "distance_to_city_center": "Distance from the property to the city center.",
         "school_rating": "School rating on the scale used by the training data.",

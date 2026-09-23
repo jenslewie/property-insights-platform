@@ -1,7 +1,8 @@
-from datetime import date
+from datetime import datetime, timezone
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic_core import PydanticCustomError
 
 
 class HousingFeatures(BaseModel):
@@ -22,8 +23,10 @@ class HousingFeatures(BaseModel):
     )
     year_built: int = Field(
         ge=1900,
-        le=date.today().year + 5,
-        description="Year the property was built or is expected to be completed.",
+        description=(
+            "Year the property was built or is expected to be completed. "
+            "Maximum is the current UTC year plus five."
+        ),
     )
     lot_size: int = Field(
         gt=0,
@@ -55,6 +58,18 @@ class HousingFeatures(BaseModel):
             }
         },
     )
+
+    @field_validator("year_built")
+    @classmethod
+    def validate_year_built(cls, value: int) -> int:
+        maximum = datetime.now(timezone.utc).year + 5
+        if value > maximum:
+            raise PydanticCustomError(
+                "less_than_equal",
+                "Input should be less than or equal to {le}",
+                {"le": maximum},
+            )
+        return value
 
 
 class ValidationError(BaseModel):
