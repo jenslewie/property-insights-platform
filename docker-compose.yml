@@ -10,18 +10,30 @@ services:
     environment:
       BATCH_PREDICTION_LIMIT: ${BATCH_PREDICTION_LIMIT:-20}
     ports:
-      - "9000:9000"
+      - "9003:9003"
 
   property-estimator-service:
     build:
       context: .
       dockerfile: property-estimator-service/Dockerfile
     environment:
-      HOUSE_PRICE_MODEL_URL: http://house-price-model-service:9000
+      HOUSE_PRICE_MODEL_URL: http://house-price-model-service:9003
       HOUSE_PRICE_MODEL_TIMEOUT_SECONDS: 5
       BATCH_ESTIMATE_LIMIT: ${BATCH_ESTIMATE_LIMIT:-20}
     ports:
       - "9001:9001"
     depends_on:
       house-price-model-service:
+        condition: service_healthy
+
+  property-insights-portal:
+    build:
+      context: .
+      dockerfile: property-insights-portal/Dockerfile
+    environment:
+      PROPERTY_ESTIMATOR_API_URL: http://property-estimator-service:9001
+    ports:
+      - "9000:9000"
+    depends_on:
+      property-estimator-service:
         condition: service_healthy

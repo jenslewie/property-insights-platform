@@ -1,17 +1,36 @@
-# Git
-.git/
+# Generated ML artifacts; the model image trains a fresh copy during its build
+house-price-model-service/artifacts/
 
-# Python
-**/.venv
+# Git and local metadata
+.git/
+.gitignore
+.DS_Store
+
+# IDE files
+**/.idea/
+**/.vscode/
+
+# Python caches and virtual environments
+**/.venv/
 **/__pycache__/
+**/*.py[cod]
 **/.pytest_cache/
 **/.ruff_cache/
 
-# IDE
-**/.idea
+# Node.js and Next.js build output for the portal
+property-insights-portal/node_modules/
+property-insights-portal/.next/
+property-insights-portal/out/
+property-insights-portal/coverage/
+property-insights-portal/build/
 
-# macOS
-**/.DS_Store
+# Local environment files; keep an example file available to the build context
+**/.env*
+!property-insights-portal/.env.local.example
 
-# Generated ML artifacts
-house-price-model-service/artifacts
+# Package-manager and application logs
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/.pnpm-debug.log*
+**/*.log

@@ -29,7 +29,7 @@ def get_settings() -> Settings:
     return Settings(
         house_price_model_url=os.getenv(
             "HOUSE_PRICE_MODEL_URL",
-            "http://localhost:9000",
+            "http://localhost:9003",
         ),
         house_price_model_timeout_seconds=float(
             os.getenv(
