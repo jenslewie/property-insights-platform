@@ -3,23 +3,37 @@
 ## Overview
 
 Spring Boot service that reads the property dataset to serve property records, filtered market
-summaries and distributions, and CSV and PDF exports. Its what-if endpoint compares model predictions
-for a property before and after feature changes. Property features must use the units and
-school-rating scale represented in the model's training data; the repository dataset does not
-document these explicitly.
+statistics, price impact comparisons, and CSV and PDF exports. The price impact endpoint compares
+the model-predicted price for a property before and after feature changes. Property features must use
+the units and school-rating scale represented in the model's training data; the repository dataset
+does not document these explicitly.
+
+## API
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/v1/properties` | List all source property records. |
+| `GET` | `/api/v1/properties/statistics/summary` | Return filtered market summary statistics. |
+| `GET` | `/api/v1/properties/statistics/distributions/{dimension}` | Return a filtered distribution for one property dimension. |
+| `POST` | `/api/v1/properties/price-impact` | Compare predicted prices for baseline and changed features. |
+| `GET` | `/api/v1/properties/export?type=data&format=csv` | Download filtered property records as CSV. |
+| `GET` | `/api/v1/properties/export?type=report&format=pdf` | Download the filtered market analysis report as PDF. |
+
+The export endpoint currently accepts only the `data`/`csv` and `report`/`pdf` combinations. Both
+exports accept the same market filter query parameters as the statistics endpoints.
 
 ## Dependencies
 
-The image build uses `data/house-price-dataset.csv` from the repository root. What-if comparisons
-call `house-price-model-service` for predictions. Docker Compose starts the model service and waits
-for its health check before starting market analysis.
+The image build uses `data/house-price-dataset.csv` from the repository root. Price impact
+comparisons call `house-price-model-service` at `POST /api/v1/properties/predict`. Docker Compose
+starts the model service and waits for its health check before starting market analysis.
 
 ## Configuration
 
 | Setting                             | Scope   | Compose value                           | Purpose                                                   |
 | ----------------------------------- | ------- | --------------------------------------- | --------------------------------------------------------- |
 | `MARKET_DATASET_PATH`               | Runtime | `/app/data/house-price-dataset.csv`     | Path to the property dataset copied into the image.      |
-| `HOUSE_PRICE_MODEL_URL`             | Runtime | `http://house-price-model-service:9003` | Base URL of the model service for what-if requests.       |
+| `HOUSE_PRICE_MODEL_URL`             | Runtime | `http://house-price-model-service:9003` | Base URL of the model service for price impact requests.  |
 | `HOUSE_PRICE_MODEL_TIMEOUT_SECONDS` | Runtime | `5`                                     | Timeout for a model request, in seconds.                  |
 | `MARKET_CACHE_MAXIMUM_SIZE`         | Runtime | `500`                                   | Maximum cached market summary and distribution entries.  |
 

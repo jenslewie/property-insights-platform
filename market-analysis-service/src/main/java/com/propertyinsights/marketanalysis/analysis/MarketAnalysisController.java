@@ -23,14 +23,14 @@ public final class MarketAnalysisController {
         this.service = service;
     }
 
-    @GetMapping("/summary")
+    @GetMapping("/statistics/summary")
     @SegmentFilterParameters
     public MarketSummary summary(
             @Parameter(hidden = true) @RequestParam MultiValueMap<String, String> params) {
         return service.summary(parser.parse(params));
     }
 
-    @GetMapping("/distributions/{dimension}")
+    @GetMapping("/statistics/distributions/{dimension}")
     @SegmentFilterParameters
     public DistributionResponse distribution(
             @Parameter(

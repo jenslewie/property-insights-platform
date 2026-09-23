@@ -10,6 +10,8 @@ Monorepo for the Property Insights Platform.
   service for single-property and batch price estimates.
 - [Property Insights Portal](property-insights-portal/README.md) — Next.js portal for property
   estimation and market analysis.
+- [Market Analysis Service](market-analysis-service/README.md) — Spring Boot API for property
+  records, market statistics, price impact, and data exports.
 
 Build and start the current services from the repository root:
 

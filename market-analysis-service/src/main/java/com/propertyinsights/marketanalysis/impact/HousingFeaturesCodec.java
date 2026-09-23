@@ -1,4 +1,4 @@
-package com.propertyinsights.marketanalysis.whatif;
+package com.propertyinsights.marketanalysis.impact;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.propertyinsights.marketanalysis.error.ApiException;
@@ -84,6 +84,6 @@ public final class HousingFeaturesCodec {
     }
 
     private ApiException invalidRequest() {
-        return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid what-if request.");
+        return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid price impact request.");
     }
 }

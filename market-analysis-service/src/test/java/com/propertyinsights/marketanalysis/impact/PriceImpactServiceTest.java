@@ -1,4 +1,4 @@
-package com.propertyinsights.marketanalysis.whatif;
+package com.propertyinsights.marketanalysis.impact;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -14,7 +14,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
-class WhatIfServiceTest {
+class PriceImpactServiceTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final List<List<HousingFeatures>> calls = new ArrayList<>();
@@ -27,7 +27,8 @@ class WhatIfServiceTest {
                 return predictions;
             };
 
-    private final WhatIfService service = new WhatIfService(new HousingFeaturesCodec(), client);
+    private final PriceImpactService service =
+            new PriceImpactService(new HousingFeaturesCodec(), client);
 
     @Test
     void comparesBaselineAndScenarioUsingOneBatchCall() {
@@ -36,7 +37,7 @@ class WhatIfServiceTest {
                         .put("square_footage", 1800)
                         .put("school_rating", new BigDecimal("8.5"));
 
-        WhatIfResponse result = service.compare(baseline(), changes);
+        PriceImpactResponse result = service.compare(baseline(), changes);
 
         assertThat(calls)
                 .containsExactly(
@@ -60,14 +61,14 @@ class WhatIfServiceTest {
         assertThat(result.changes().keySet()).containsExactly("square_footage", "school_rating");
         assertThat(result.changes().get("square_footage"))
                 .isEqualTo(
-                        new WhatIfResponse.FeatureChange(
+                        new PriceImpactResponse.FeatureChange(
                                 new BigDecimal("1550"), new BigDecimal("1800")));
         assertThat(result.changes().get("school_rating"))
                 .isEqualTo(
-                        new WhatIfResponse.FeatureChange(
+                        new PriceImpactResponse.FeatureChange(
                                 new BigDecimal("7.6"), new BigDecimal("8.5")));
-        assertThat(result.baselineEstimate()).isEqualByComparingTo("420000.00");
-        assertThat(result.scenarioEstimate()).isEqualByComparingTo("465000.00");
+        assertThat(result.baselinePredictedPrice()).isEqualByComparingTo("420000.00");
+        assertThat(result.scenarioPredictedPrice()).isEqualByComparingTo("465000.00");
         assertThat(result.absoluteChange()).isEqualByComparingTo("45000.00");
         assertThat(result.percentageChange()).isEqualByComparingTo("10.71");
     }
@@ -84,7 +85,7 @@ class WhatIfServiceTest {
                         .put("bedrooms", 4)
                         .put("square_footage", 1800);
 
-        WhatIfResponse result = service.compare(baseline(), changes);
+        PriceImpactResponse result = service.compare(baseline(), changes);
 
         assertThat(result.changes().keySet())
                 .containsExactly(
@@ -109,10 +110,10 @@ class WhatIfServiceTest {
     void returnsNullPercentageWhenBaselineEstimateIsZero() {
         predictions = List.of(BigDecimal.ZERO, new BigDecimal("10"));
 
-        WhatIfResponse result =
+        PriceImpactResponse result =
                 service.compare(baseline(), mapper.createObjectNode().put("school_rating", 8.5));
 
-        assertThat(result.baselineEstimate()).isEqualByComparingTo("0.00");
+        assertThat(result.baselinePredictedPrice()).isEqualByComparingTo("0.00");
         assertThat(result.absoluteChange()).isEqualByComparingTo("10.00");
         assertThat(result.percentageChange()).isNull();
     }
@@ -121,7 +122,7 @@ class WhatIfServiceTest {
     void keepsNegativeEstimateChangesNegative() {
         predictions = List.of(new BigDecimal("465000"), new BigDecimal("420000"));
 
-        WhatIfResponse result =
+        PriceImpactResponse result =
                 service.compare(baseline(), mapper.createObjectNode().put("school_rating", 8.5));
 
         assertThat(result.absoluteChange()).isEqualByComparingTo("-45000.00");
@@ -205,8 +206,8 @@ class WhatIfServiceTest {
         return mapper.createObjectNode().put("square_footage", 1800);
     }
 
-    private WhatIfResponse.FeatureChange change(String from, String to) {
-        return new WhatIfResponse.FeatureChange(new BigDecimal(from), new BigDecimal(to));
+    private PriceImpactResponse.FeatureChange change(String from, String to) {
+        return new PriceImpactResponse.FeatureChange(new BigDecimal(from), new BigDecimal(to));
     }
 
     private void assertProblem(JsonNode baseline, JsonNode changes, HttpStatus expectedStatus) {

@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@Tag(name = "Properties", description = "Property records, market summaries, and distributions.")
+@Tag(name = "Properties")
 public final class PropertyController {
 
     private final PropertyDataset dataset;

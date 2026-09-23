@@ -107,7 +107,9 @@ def test_api_loads_and_serves_regularized_model_pipeline(
     try:
         with TestClient(app, raise_server_exceptions=False) as ridge_client:
             model_info_response = ridge_client.get("/api/v1/model-info")
-            prediction_response = ridge_client.post("/api/v1/predict", json=SINGLE_PROPERTY)
+            prediction_response = ridge_client.post(
+                "/api/v1/properties/predict", json=SINGLE_PROPERTY
+            )
     finally:
         get_model_bundle.cache_clear()
 
@@ -129,7 +131,7 @@ def test_openapi_provides_explicit_endpoint_documentation() -> None:
     operations = {
         ("/health", "get"): "Check service health",
         ("/api/v1/model-info", "get"): "Get model information",
-        ("/api/v1/predict", "post"): "Predict house prices",
+        ("/api/v1/properties/predict", "post"): "Predict house prices",
     }
 
     for (path, method), summary in operations.items():
@@ -242,9 +244,9 @@ def test_openapi_describes_validation_error_fields() -> None:
 
 
 def test_openapi_documents_single_and_batch_prediction_requests() -> None:
-    request_media_type = app.openapi()["paths"]["/api/v1/predict"]["post"]["requestBody"][
-        "content"
-    ]["application/json"]
+    request_media_type = app.openapi()["paths"]["/api/v1/properties/predict"]["post"][
+        "requestBody"
+    ]["content"]["application/json"]
 
     assert request_media_type["schema"]["title"] == "Payload"
     assert request_media_type["examples"] == {
@@ -307,7 +309,9 @@ def test_openapi_describes_prediction_fields_without_assuming_units() -> None:
 
 def test_openapi_documents_prediction_validation_examples() -> None:
     openapi_schema = app.openapi()
-    validation_response = openapi_schema["paths"]["/api/v1/predict"]["post"]["responses"]["422"]
+    validation_response = openapi_schema["paths"]["/api/v1/properties/predict"]["post"][
+        "responses"
+    ]["422"]
     media_type = validation_response["content"]["application/json"]
 
     assert media_type["schema"] == {"$ref": "#/components/schemas/HTTPValidationError"}
@@ -343,21 +347,21 @@ def test_openapi_documents_prediction_validation_examples() -> None:
 
 
 def test_predict_accepts_single_property(client: TestClient) -> None:
-    response = client.post("/api/v1/predict", json=SINGLE_PROPERTY)
+    response = client.post("/api/v1/properties/predict", json=SINGLE_PROPERTY)
 
     assert response.status_code == 200
     assert response.json() == {"count": 1, "predictions": [211250.0]}
 
 
 def test_predict_accepts_property_batch(client: TestClient) -> None:
-    response = client.post("/api/v1/predict", json=[SINGLE_PROPERTY, SECOND_PROPERTY])
+    response = client.post("/api/v1/properties/predict", json=[SINGLE_PROPERTY, SECOND_PROPERTY])
 
     assert response.status_code == 200
     assert response.json() == {"count": 2, "predictions": [211250.0, 237500.0]}
 
 
 def test_predict_accepts_batch_at_default_limit(client: TestClient) -> None:
-    response = client.post("/api/v1/predict", json=[SINGLE_PROPERTY] * 20)
+    response = client.post("/api/v1/properties/predict", json=[SINGLE_PROPERTY] * 20)
 
     assert response.status_code == 200
     assert response.json()["count"] == 20
@@ -365,7 +369,7 @@ def test_predict_accepts_batch_at_default_limit(client: TestClient) -> None:
 
 
 def test_predict_rejects_batch_above_default_limit(client: TestClient) -> None:
-    response = client.post("/api/v1/predict", json=[SINGLE_PROPERTY] * 21)
+    response = client.post("/api/v1/properties/predict", json=[SINGLE_PROPERTY] * 21)
 
     assert response.status_code == 422
     assert response.json() == {
@@ -384,7 +388,7 @@ def test_predict_uses_configured_batch_limit(
 ) -> None:
     monkeypatch.setenv("BATCH_PREDICTION_LIMIT", "2")
 
-    response = client.post("/api/v1/predict", json=[SINGLE_PROPERTY] * 3)
+    response = client.post("/api/v1/properties/predict", json=[SINGLE_PROPERTY] * 3)
 
     assert response.status_code == 422
     assert response.json() == {
@@ -399,7 +403,7 @@ def test_predict_uses_configured_batch_limit(
 
 
 def test_predict_rejects_empty_batch(client: TestClient) -> None:
-    response = client.post("/api/v1/predict", json=[])
+    response = client.post("/api/v1/properties/predict", json=[])
 
     assert response.status_code == 422
     assert response.json() == {
@@ -416,7 +420,7 @@ def test_predict_rejects_empty_batch(client: TestClient) -> None:
 def test_predict_rejects_invalid_property(client: TestClient) -> None:
     invalid_property = {**SINGLE_PROPERTY, "square_footage": 0}
 
-    response = client.post("/api/v1/predict", json=invalid_property)
+    response = client.post("/api/v1/properties/predict", json=invalid_property)
 
     assert response.status_code == 422
     assert any(
@@ -437,7 +441,7 @@ def test_predict_rejects_non_finite_number(client: TestClient) -> None:
     }"""
 
     response = client.post(
-        "/api/v1/predict",
+        "/api/v1/properties/predict",
         content=raw_payload,
         headers={"content-type": "application/json"},
     )

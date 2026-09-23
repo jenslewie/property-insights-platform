@@ -20,7 +20,9 @@ class DistributionApiTest {
 
     @Test
     void returnsStablePriceBucketsWithSnakeCaseFields() throws Exception {
-        mockMvc.perform(get("/api/v1/properties/distributions/price").param("min_price", "200000"))
+        mockMvc.perform(
+                        get("/api/v1/properties/statistics/distributions/price")
+                                .param("min_price", "200000"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.dimension").value("price"))
                 .andExpect(jsonPath("$.matched_count").isNumber())
@@ -33,7 +35,7 @@ class DistributionApiTest {
 
     @Test
     void unknownDimensionReturnsProblemDetail() throws Exception {
-        mockMvc.perform(get("/api/v1/properties/distributions/unknown"))
+        mockMvc.perform(get("/api/v1/properties/statistics/distributions/unknown"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(jsonPath("$.status").value(400))

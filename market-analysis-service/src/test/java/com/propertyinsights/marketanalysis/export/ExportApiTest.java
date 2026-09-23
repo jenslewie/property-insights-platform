@@ -43,7 +43,11 @@ class ExportApiTest {
     @Test
     void downloadsFilteredCsvAttachment() throws Exception {
         MvcResult started =
-                mockMvc.perform(get("/api/v1/exports/properties.csv").param("min_price", "350000"))
+                mockMvc.perform(
+                                get("/api/v1/properties/export")
+                                        .param("type", "data")
+                                        .param("format", "csv")
+                                        .param("min_price", "350000"))
                         .andExpect(request().asyncStarted())
                         .andReturn();
 
@@ -88,7 +92,9 @@ class ExportApiTest {
     void downloadsFilteredPdfAttachment() throws Exception {
         MvcResult started =
                 mockMvc.perform(
-                                get("/api/v1/exports/market-report.pdf")
+                                get("/api/v1/properties/export")
+                                        .param("type", "report")
+                                        .param("format", "pdf")
                                         .param("min_price", "350000"))
                         .andExpect(request().asyncStarted())
                         .andReturn();
@@ -120,13 +126,37 @@ class ExportApiTest {
 
     @Test
     void noMatchReturnsProblemDetailWithoutStartingDownload() throws Exception {
-        mockMvc.perform(get("/api/v1/exports/properties.csv").param("min_price", "999999"))
+        mockMvc.perform(
+                        get("/api/v1/properties/export")
+                                .param("type", "data")
+                                .param("format", "csv")
+                                .param("min_price", "999999"))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
-        mockMvc.perform(get("/api/v1/exports/market-report.pdf").param("min_price", "999999"))
+        mockMvc.perform(
+                        get("/api/v1/properties/export")
+                                .param("type", "report")
+                                .param("format", "pdf")
+                                .param("min_price", "999999"))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+    }
+
+    @Test
+    void rejectsUnsupportedExportTypeAndFormatCombinations() throws Exception {
+        for (String[] combination :
+                List.of(
+                        new String[] {"data", "pdf"},
+                        new String[] {"report", "csv"},
+                        new String[] {"unknown", "pdf"})) {
+            mockMvc.perform(
+                            get("/api/v1/properties/export")
+                                    .param("type", combination[0])
+                                    .param("format", combination[1]))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+        }
     }
 
     @TestConfiguration(proxyBeanMethods = false)

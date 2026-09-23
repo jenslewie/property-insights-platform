@@ -9,7 +9,8 @@ data; the repository dataset does not document these explicitly.
 
 ## Dependencies
 
-The portal sends estimate requests to `property-estimator-service`. Docker Compose configures the
+The portal's `/api/estimates` route forwards estimate requests to
+`property-estimator-service` at `POST /api/v1/properties/estimate`. Docker Compose configures the
 service URL and waits for the estimator to become healthy before starting the portal.
 
 ## Configuration

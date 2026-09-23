@@ -62,7 +62,7 @@ def test_estimate_action_is_exposed_at_versioned_singular_path() -> None:
 
     try:
         with TestClient(app) as client:
-            response = client.post("/api/v1/estimate", json=PROPERTY)
+            response = client.post("/api/v1/properties/estimate", json=PROPERTY)
             legacy_response = client.post("/api/v1/estimates", json=PROPERTY)
     finally:
         app.dependency_overrides.clear()
@@ -81,7 +81,7 @@ def test_estimate_accepts_property_batch() -> None:
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/api/v1/estimate",
+                "/api/v1/properties/estimate",
                 json=[PROPERTY, SECOND_PROPERTY],
             )
     finally:
@@ -109,7 +109,7 @@ def test_estimate_rejects_invalid_property() -> None:
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/api/v1/estimate",
+                "/api/v1/properties/estimate",
                 json={**PROPERTY, "square_footage": 0},
             )
     finally:
@@ -126,7 +126,7 @@ def test_estimate_rejects_non_finite_request_number() -> None:
     try:
         with TestClient(app) as client:
             response = client.post(
-                "/api/v1/estimate",
+                "/api/v1/properties/estimate",
                 content=(
                     b'{"square_footage":1550,"bedrooms":3,"bathrooms":1e400,'
                     b'"year_built":1997,"lot_size":6800,'
@@ -146,7 +146,7 @@ def test_estimate_rejects_empty_batch() -> None:
 
     try:
         with TestClient(app) as client:
-            response = client.post("/api/v1/estimate", json=[])
+            response = client.post("/api/v1/properties/estimate", json=[])
     finally:
         app.dependency_overrides.clear()
 
@@ -170,7 +170,7 @@ def test_estimate_rejects_batch_above_configured_limit(
 
     try:
         with TestClient(app) as client:
-            response = client.post("/api/v1/estimate", json=[PROPERTY] * 3)
+            response = client.post("/api/v1/properties/estimate", json=[PROPERTY] * 3)
     finally:
         app.dependency_overrides.clear()
 
@@ -199,7 +199,7 @@ def test_estimate_maps_model_protocol_error_to_service_unavailable() -> None:
 
     try:
         with TestClient(app, raise_server_exceptions=False) as client:
-            response = client.post("/api/v1/estimate", json=PROPERTY)
+            response = client.post("/api/v1/properties/estimate", json=PROPERTY)
     finally:
         app.dependency_overrides.clear()
         asyncio.run(http_client.aclose())
@@ -227,7 +227,7 @@ def test_estimate_maps_non_finite_model_prediction_to_bad_gateway() -> None:
 
     try:
         with TestClient(app, raise_server_exceptions=False) as client:
-            response = client.post("/api/v1/estimate", json=PROPERTY)
+            response = client.post("/api/v1/properties/estimate", json=PROPERTY)
     finally:
         app.dependency_overrides.clear()
         asyncio.run(http_client.aclose())
@@ -239,7 +239,7 @@ def test_estimate_maps_non_finite_model_prediction_to_bad_gateway() -> None:
 
 
 def test_openapi_documents_estimate_operation_and_request_examples() -> None:
-    operation = app.openapi()["paths"]["/api/v1/estimate"]["post"]
+    operation = app.openapi()["paths"]["/api/v1/properties/estimate"]["post"]
 
     assert operation["summary"] == "Estimate property prices"
     assert operation["description"] == (
@@ -328,7 +328,7 @@ def test_openapi_describes_estimate_error_fields() -> None:
 
 
 def test_openapi_documents_model_service_error_responses() -> None:
-    responses = app.openapi()["paths"]["/api/v1/estimate"]["post"]["responses"]
+    responses = app.openapi()["paths"]["/api/v1/properties/estimate"]["post"]["responses"]
 
     assert responses["502"]["content"]["application/json"] == {
         "schema": {"$ref": "#/components/schemas/ErrorResponse"},
@@ -352,7 +352,9 @@ def test_openapi_documents_model_service_error_responses() -> None:
 
 def test_openapi_documents_estimate_validation_examples() -> None:
     openapi_schema = app.openapi()
-    validation_response = openapi_schema["paths"]["/api/v1/estimate"]["post"]["responses"]["422"]
+    validation_response = openapi_schema["paths"]["/api/v1/properties/estimate"]["post"][
+        "responses"
+    ]["422"]
     media_type = validation_response["content"]["application/json"]
 
     assert media_type["schema"] == {"$ref": "#/components/schemas/HTTPValidationError"}

@@ -1,4 +1,4 @@
-package com.propertyinsights.marketanalysis.whatif;
+package com.propertyinsights.marketanalysis.impact;
 
 import java.math.BigDecimal;
 import java.util.List;

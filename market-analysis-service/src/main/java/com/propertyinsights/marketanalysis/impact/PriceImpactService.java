@@ -1,4 +1,4 @@
-package com.propertyinsights.marketanalysis.whatif;
+package com.propertyinsights.marketanalysis.impact;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -15,9 +15,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
-public final class WhatIfService {
+public final class PriceImpactService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(WhatIfService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(PriceImpactService.class);
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
     private static final int MONEY_SCALE = 2;
     private static final int PERCENTAGE_SCALE = 2;
@@ -25,12 +25,12 @@ public final class WhatIfService {
     private final HousingFeaturesCodec codec;
     private final ModelPredictionClient predictionClient;
 
-    public WhatIfService(HousingFeaturesCodec codec, ModelPredictionClient predictionClient) {
+    public PriceImpactService(HousingFeaturesCodec codec, ModelPredictionClient predictionClient) {
         this.codec = codec;
         this.predictionClient = predictionClient;
     }
 
-    public WhatIfResponse compare(JsonNode baselineNode, JsonNode changesNode) {
+    public PriceImpactResponse compare(JsonNode baselineNode, JsonNode changesNode) {
         HousingFeatures baseline = codec.parse(baselineNode);
 
         if (changesNode == null || !changesNode.isObject() || changesNode.isEmpty()) {
@@ -51,7 +51,7 @@ public final class WhatIfService {
         }
 
         HousingFeatures scenario = codec.parse(scenarioNode);
-        Map<String, WhatIfResponse.FeatureChange> effectiveChanges =
+        Map<String, PriceImpactResponse.FeatureChange> effectiveChanges =
                 effectiveChanges(baseline, scenario);
 
         if (effectiveChanges.isEmpty()) {
@@ -59,9 +59,9 @@ public final class WhatIfService {
         }
 
         LOGGER.atInfo()
-                .addKeyValue("event", "what_if_analysis_started")
+                .addKeyValue("event", "price_impact_analysis_started")
                 .addKeyValue("changed_feature_count", effectiveChanges.size())
-                .log("What-if analysis started");
+                .log("Price impact analysis started");
 
         List<BigDecimal> prices = predictionClient.predict(List.of(baseline, scenario));
 
@@ -74,40 +74,45 @@ public final class WhatIfService {
                     "Model service returned an invalid prediction response.");
         }
 
-        BigDecimal baselineEstimate = prices.get(0).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
-        BigDecimal scenarioEstimate = prices.get(1).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
-        BigDecimal absoluteChange = scenarioEstimate.subtract(baselineEstimate);
+        BigDecimal baselinePredictedPrice =
+                prices.get(0).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        BigDecimal scenarioPredictedPrice =
+                prices.get(1).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        BigDecimal absoluteChange = scenarioPredictedPrice.subtract(baselinePredictedPrice);
         BigDecimal percentageChange =
-                baselineEstimate.compareTo(BigDecimal.ZERO) == 0
+                baselinePredictedPrice.compareTo(BigDecimal.ZERO) == 0
                         ? null
                         : absoluteChange
                                 .multiply(ONE_HUNDRED)
-                                .divide(baselineEstimate, PERCENTAGE_SCALE, RoundingMode.HALF_UP);
+                                .divide(
+                                        baselinePredictedPrice,
+                                        PERCENTAGE_SCALE,
+                                        RoundingMode.HALF_UP);
 
         LOGGER.atInfo()
-                .addKeyValue("event", "what_if_analysis_completed")
+                .addKeyValue("event", "price_impact_analysis_completed")
                 .addKeyValue("changed_feature_count", effectiveChanges.size())
-                .log("What-if analysis completed");
+                .log("Price impact analysis completed");
 
-        return new WhatIfResponse(
+        return new PriceImpactResponse(
                 baseline,
                 effectiveChanges,
-                baselineEstimate,
-                scenarioEstimate,
+                baselinePredictedPrice,
+                scenarioPredictedPrice,
                 absoluteChange,
                 percentageChange);
     }
 
-    private Map<String, WhatIfResponse.FeatureChange> effectiveChanges(
+    private Map<String, PriceImpactResponse.FeatureChange> effectiveChanges(
             HousingFeatures baseline, HousingFeatures scenario) {
-        Map<String, WhatIfResponse.FeatureChange> result = new LinkedHashMap<>();
+        Map<String, PriceImpactResponse.FeatureChange> result = new LinkedHashMap<>();
 
         for (HousingFeature feature : HousingFeature.values()) {
             BigDecimal from = feature.valueOf(baseline);
             BigDecimal to = feature.valueOf(scenario);
 
             if (from.compareTo(to) != 0) {
-                result.put(feature.jsonName(), new WhatIfResponse.FeatureChange(from, to));
+                result.put(feature.jsonName(), new PriceImpactResponse.FeatureChange(from, to));
             }
         }
 
@@ -115,6 +120,6 @@ public final class WhatIfService {
     }
 
     private ApiException invalidRequest() {
-        return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid what-if request.");
+        return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid price impact request.");
     }
 }

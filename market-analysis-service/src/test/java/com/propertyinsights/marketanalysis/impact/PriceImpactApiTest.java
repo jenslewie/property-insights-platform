@@ -1,4 +1,4 @@
-package com.propertyinsights.marketanalysis.whatif;
+package com.propertyinsights.marketanalysis.impact;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -25,7 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class WhatIfApiTest {
+class PriceImpactApiTest {
 
     @Autowired private MockMvc mockMvc;
 
@@ -38,10 +38,10 @@ class WhatIfApiTest {
     }
 
     @Test
-    void returnsWhatIfEstimatesAndOnlyChangedFeatures() throws Exception {
+    void returnsPriceImpactAndOnlyChangedFeatures() throws Exception {
         var result =
                 mockMvc.perform(
-                                post("/api/v1/what-if")
+                                post("/api/v1/properties/price-impact")
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(validRequest()))
                         .andExpect(status().isOk())
@@ -51,8 +51,8 @@ class WhatIfApiTest {
                         .andExpect(jsonPath("$.changes.school_rating.from").value(7.6))
                         .andExpect(jsonPath("$.changes.school_rating.to").value(8.5))
                         .andExpect(jsonPath("$.changes.bedrooms").doesNotExist())
-                        .andExpect(jsonPath("$.baseline_estimate").value(420000))
-                        .andExpect(jsonPath("$.scenario_estimate").value(465000))
+                        .andExpect(jsonPath("$.baseline_predicted_price").value(420000))
+                        .andExpect(jsonPath("$.scenario_predicted_price").value(465000))
                         .andExpect(jsonPath("$.absolute_change").value(45000))
                         .andExpect(jsonPath("$.percentage_change").value(10.71))
                         .andReturn();
@@ -71,13 +71,13 @@ class WhatIfApiTest {
     @Test
     void doesNotCacheModelPredictions() throws Exception {
         mockMvc.perform(
-                        post("/api/v1/what-if")
+                        post("/api/v1/properties/price-impact")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(validRequest()))
                 .andExpect(status().isOk());
 
         mockMvc.perform(
-                        post("/api/v1/what-if")
+                        post("/api/v1/properties/price-impact")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(validRequest()))
                 .andExpect(status().isOk());
@@ -88,13 +88,13 @@ class WhatIfApiTest {
     @Test
     void invalidChangesReturnProblemDetailWithoutCallingModel() throws Exception {
         mockMvc.perform(
-                        post("/api/v1/what-if")
+                        post("/api/v1/properties/price-impact")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(requestWithChanges("{}")))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(jsonPath("$.status").value(422))
-                .andExpect(jsonPath("$.detail").value("Invalid what-if request."));
+                .andExpect(jsonPath("$.detail").value("Invalid price impact request."));
 
         verifyNoInteractions(predictionClient);
     }
@@ -102,7 +102,7 @@ class WhatIfApiTest {
     @Test
     void malformedJsonReturnsProblemDetail() throws Exception {
         mockMvc.perform(
-                        post("/api/v1/what-if")
+                        post("/api/v1/properties/price-impact")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"baseline\":"))
                 .andExpect(status().isUnprocessableEntity())
@@ -117,7 +117,7 @@ class WhatIfApiTest {
     @Test
     void extraTopLevelRequestFieldsAreRejected() throws Exception {
         mockMvc.perform(
-                        post("/api/v1/what-if")
+                        post("/api/v1/properties/price-impact")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         """

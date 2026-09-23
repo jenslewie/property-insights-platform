@@ -49,7 +49,7 @@ class HousePriceClient:
 
         try:
             response = await self._http_client.post(
-                "/api/v1/predict",
+                "/api/v1/properties/predict",
                 json=payload,
             )
         except httpx.TransportError as exc:

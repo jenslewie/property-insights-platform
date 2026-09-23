@@ -1,4 +1,4 @@
-package com.propertyinsights.marketanalysis.whatif;
+package com.propertyinsights.marketanalysis.impact;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -64,7 +64,7 @@ class HttpModelPredictionClientTest {
 
     @Test
     void sendsOneBatchRequestAndPreservesPredictionOrder() {
-        server.expect(requestTo(MODEL_URL + "/api/v1/predict"))
+        server.expect(requestTo(MODEL_URL + "/api/v1/properties/predict"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(
                         content()
@@ -106,7 +106,7 @@ class HttpModelPredictionClientTest {
 
     @Test
     void acceptsPredictionCountMatchingSingleInput() {
-        server.expect(requestTo(MODEL_URL + "/api/v1/predict"))
+        server.expect(requestTo(MODEL_URL + "/api/v1/properties/predict"))
                 .andRespond(
                         withSuccess(
                                 "{\"count\":1,\"predictions\":[420000]}",
@@ -120,7 +120,7 @@ class HttpModelPredictionClientTest {
 
     @Test
     void rejectsPredictionCountThatOverflowsAnInteger() {
-        server.expect(requestTo(MODEL_URL + "/api/v1/predict"))
+        server.expect(requestTo(MODEL_URL + "/api/v1/properties/predict"))
                 .andRespond(
                         withSuccess(
                                 "{\"count\":4294967298,\"predictions\":[420000,465000]}",
@@ -132,7 +132,7 @@ class HttpModelPredictionClientTest {
 
     @Test
     void mapsModelHttpErrorToBadGateway() {
-        server.expect(requestTo(MODEL_URL + "/api/v1/predict"))
+        server.expect(requestTo(MODEL_URL + "/api/v1/properties/predict"))
                 .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
 
         assertProblem(HttpStatus.BAD_GATEWAY);
@@ -141,7 +141,7 @@ class HttpModelPredictionClientTest {
 
     @Test
     void rejectsNonOkSuccessStatusFromModel() {
-        server.expect(requestTo(MODEL_URL + "/api/v1/predict"))
+        server.expect(requestTo(MODEL_URL + "/api/v1/properties/predict"))
                 .andRespond(
                         withStatus(HttpStatus.CREATED)
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -159,7 +159,7 @@ class HttpModelPredictionClientTest {
                 "{\"count\":2,\"predictions\":[420000,\"bad\"]}"
             })
     void rejectsInvalidPredictionStructure(String body) {
-        server.expect(requestTo(MODEL_URL + "/api/v1/predict"))
+        server.expect(requestTo(MODEL_URL + "/api/v1/properties/predict"))
                 .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
 
         assertProblem(HttpStatus.BAD_GATEWAY);
@@ -168,7 +168,7 @@ class HttpModelPredictionClientTest {
 
     @Test
     void mapsMalformedJsonToBadGateway() {
-        server.expect(requestTo(MODEL_URL + "/api/v1/predict"))
+        server.expect(requestTo(MODEL_URL + "/api/v1/properties/predict"))
                 .andRespond(withSuccess("{not-json", MediaType.APPLICATION_JSON));
 
         assertProblem(HttpStatus.BAD_GATEWAY);
@@ -184,7 +184,7 @@ class HttpModelPredictionClientTest {
     @ParameterizedTest
     @ValueSource(strings = {"", "{\"count\":2,\"predictions\":["})
     void mapsResponseBodyTimeoutToServiceUnavailable(String bodyPrefix) {
-        server.expect(requestTo(MODEL_URL + "/api/v1/predict"))
+        server.expect(requestTo(MODEL_URL + "/api/v1/properties/predict"))
                 .andRespond(
                         request -> {
                             InputStream body =

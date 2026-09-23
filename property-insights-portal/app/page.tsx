@@ -11,7 +11,7 @@ const applications = [
   {
     title: "Property Market Analysis",
     description:
-      "Explore property segments, market statistics, and what-if scenarios.",
+      "Explore property segments, market statistics, and price impact comparisons.",
     href: "/market-analysis",
     action: "View Market Analysis",
   },

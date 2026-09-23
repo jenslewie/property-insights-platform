@@ -98,7 +98,7 @@ MODEL_SERVICE_UNAVAILABLE_RESPONSE_EXAMPLES = {
 
 
 @router.post(
-    "/estimate",
+    "/properties/estimate",
     response_model=EstimateResult,
     status_code=status.HTTP_200_OK,
     summary="Estimate property prices",

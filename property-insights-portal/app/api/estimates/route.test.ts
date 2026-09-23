@@ -64,7 +64,7 @@ describe("POST /api/estimates", () => {
     expect(await response.json()).toEqual(estimate);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://estimator:9001/api/v1/estimate",
+      "http://estimator:9001/api/v1/properties/estimate",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify(property),
@@ -85,7 +85,7 @@ describe("POST /api/estimates", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(batchEstimate);
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://estimator:9001/api/v1/estimate",
+      "http://estimator:9001/api/v1/properties/estimate",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify(properties),

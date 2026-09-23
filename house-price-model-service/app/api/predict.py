@@ -76,7 +76,7 @@ PREDICTION_VALIDATION_RESPONSE_EXAMPLES = {
 
 
 @router.post(
-    "/predict",
+    "/properties/predict",
     response_model=PredictionResponse,
     status_code=status.HTTP_200_OK,
     summary="Predict house prices",

@@ -60,7 +60,7 @@ def test_predict_sends_single_property_to_versioned_model_action() -> None:
     assert prediction == 250_879.73
     assert captured_request is not None
     assert captured_request.method == "POST"
-    assert captured_request.url.path == "/api/v1/predict"
+    assert captured_request.url.path == "/api/v1/properties/predict"
     assert json.loads(captured_request.content) == PROPERTY.model_dump()
 
 

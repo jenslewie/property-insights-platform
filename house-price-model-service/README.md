@@ -3,9 +3,10 @@
 ## Overview
 
 FastAPI service that trains and serves `LinearRegression`, `Ridge`, or `Lasso` models for property
-price prediction. Docker builds train the selected model and package its model artifact and metadata
-into the runtime image. Input features must use the units and school-rating scale represented in the
-training data; the repository dataset does not document these explicitly.
+price prediction through `POST /api/v1/properties/predict`. Docker builds train the selected model
+and package its model artifact and metadata into the runtime image. Input features must use the units
+and school-rating scale represented in the training data; the repository dataset does not document
+these explicitly.
 
 ## Dependencies
 

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   let upstream: Response;
 
   try {
-    upstream = await fetch(`${baseUrl}/api/v1/estimate`, {
+    upstream = await fetch(`${baseUrl}/api/v1/properties/estimate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

@@ -1,4 +1,4 @@
-package com.propertyinsights.marketanalysis.whatif;
+package com.propertyinsights.marketanalysis.impact;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.propertyinsights.marketanalysis.error.ApiException;
@@ -52,7 +52,7 @@ public final class HttpModelPredictionClient implements ModelPredictionClient {
             ResponseEntity<JsonNode> response =
                     restClient
                             .post()
-                            .uri("/api/v1/predict")
+                            .uri("/api/v1/properties/predict")
                             .contentType(MediaType.APPLICATION_JSON)
                             .body(properties)
                             .retrieve()

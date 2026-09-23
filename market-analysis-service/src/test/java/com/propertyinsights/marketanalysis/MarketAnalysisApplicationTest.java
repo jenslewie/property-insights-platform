@@ -6,8 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.propertyinsights.marketanalysis.impact.ModelPredictionClient;
 import com.propertyinsights.marketanalysis.property.PropertyDataset;
-import com.propertyinsights.marketanalysis.whatif.ModelPredictionClient;
 import java.nio.file.NoSuchFileException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

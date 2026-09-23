@@ -1,4 +1,4 @@
-package com.propertyinsights.marketanalysis.whatif;
+package com.propertyinsights.marketanalysis.impact;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
@@ -27,7 +27,7 @@ class ConfiguredModelPredictionClientTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         HttpModelPredictionClient client = new HttpModelPredictionClient(builder.build());
 
-        server.expect(requestTo("http://localhost:9003/api/v1/predict"))
+        server.expect(requestTo("http://localhost:9003/api/v1/properties/predict"))
                 .andExpect(
                         content()
                                 .json(

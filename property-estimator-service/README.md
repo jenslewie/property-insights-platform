@@ -2,9 +2,10 @@
 
 ## Overview
 
-FastAPI orchestration service that estimates one property's value or a batch of properties by
-calling the House Price Model Service. Inputs must use the units and school-rating scale represented
-in the model's training data; the repository dataset does not document these explicitly.
+FastAPI orchestration service that estimates one property's value or a batch of properties through
+`POST /api/v1/properties/estimate`. It calls the House Price Model Service at
+`POST /api/v1/properties/predict`. Inputs must use the units and school-rating scale represented in
+the model's training data; the repository dataset does not document these explicitly.
 
 ## Dependencies
 

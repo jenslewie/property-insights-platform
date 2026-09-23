@@ -1,19 +1,19 @@
-package com.propertyinsights.marketanalysis.whatif;
+package com.propertyinsights.marketanalysis.impact;
 
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public record WhatIfResponse(
+public record PriceImpactResponse(
         HousingFeatures baseline,
         Map<String, FeatureChange> changes,
-        BigDecimal baselineEstimate,
-        BigDecimal scenarioEstimate,
+        BigDecimal baselinePredictedPrice,
+        BigDecimal scenarioPredictedPrice,
         BigDecimal absoluteChange,
         BigDecimal percentageChange) {
 
-    public WhatIfResponse {
+    public PriceImpactResponse {
         changes = Collections.unmodifiableMap(new LinkedHashMap<>(changes));
     }
 
