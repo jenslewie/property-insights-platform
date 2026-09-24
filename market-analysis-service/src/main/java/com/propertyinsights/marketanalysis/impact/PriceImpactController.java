@@ -34,8 +34,7 @@ public final class PriceImpactController {
                       examples =
                           @ExampleObject(
                               name = "validPriceImpact",
-                              summary =
-                                  "Increase school ratings and living area for a filtered segment.",
+                              summary = "Adjust model features for a filtered segment.",
                               value =
                                   """
                                                     {
@@ -43,7 +42,12 @@ public final class PriceImpactController {
                                                       "scenario": {
                                                         "adjustments": {
                                                           "school_rating_delta": 1,
-                                                          "square_footage_percent": 5
+                                                          "square_footage_percent": 5,
+                                                          "bedrooms_delta": 1,
+                                                          "bathrooms_delta": 0.5,
+                                                          "year_built_delta": 5,
+                                                          "lot_size_delta": 500,
+                                                          "distance_to_city_center_delta": 0.5
                                                         }
                                                       }
                                                     }

@@ -63,7 +63,27 @@ class OpenApiDocumentationTest {
         .andExpect(
             jsonPath(
                     "$.paths['/api/v1/market/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.scenario.adjustments.square_footage_percent")
-                .value(5));
+                .value(5))
+        .andExpect(
+            jsonPath(
+                    "$.paths['/api/v1/market/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.scenario.adjustments.bedrooms_delta")
+                .value(1))
+        .andExpect(
+            jsonPath(
+                    "$.paths['/api/v1/market/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.scenario.adjustments.bathrooms_delta")
+                .value(0.5))
+        .andExpect(
+            jsonPath(
+                    "$.paths['/api/v1/market/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.scenario.adjustments.year_built_delta")
+                .value(5))
+        .andExpect(
+            jsonPath(
+                    "$.paths['/api/v1/market/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.scenario.adjustments.lot_size_delta")
+                .value(500))
+        .andExpect(
+            jsonPath(
+                    "$.paths['/api/v1/market/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.scenario.adjustments.distance_to_city_center_delta")
+                .value(0.5));
   }
 
   @Test
@@ -114,7 +134,12 @@ class OpenApiDocumentationTest {
       String name = parameter.path("name").asText();
       if (name.equals("format")
           || name.equals("scenario_school_rating_delta")
-          || name.equals("scenario_square_footage_percent")) {
+          || name.equals("scenario_square_footage_percent")
+          || name.equals("scenario_bedrooms_delta")
+          || name.equals("scenario_bathrooms_delta")
+          || name.equals("scenario_year_built_delta")
+          || name.equals("scenario_lot_size_delta")
+          || name.equals("scenario_distance_to_city_center_delta")) {
         continue;
       }
       assertThat(name).matches("(min|max)_.+");
@@ -192,8 +217,17 @@ class OpenApiDocumentationTest {
             .path("/api/v1/market/export")
             .path("get")
             .path("parameters");
-    for (String name :
-        java.util.List.of("scenario_school_rating_delta", "scenario_square_footage_percent")) {
+    Map<String, String> scenarioTypes =
+        Map.of(
+            "scenario_school_rating_delta", "number",
+            "scenario_square_footage_percent", "number",
+            "scenario_bedrooms_delta", "integer",
+            "scenario_bathrooms_delta", "number",
+            "scenario_year_built_delta", "integer",
+            "scenario_lot_size_delta", "integer",
+            "scenario_distance_to_city_center_delta", "number");
+    for (Map.Entry<String, String> scenarioType : scenarioTypes.entrySet()) {
+      String name = scenarioType.getKey();
       JsonNode parameter = null;
       for (JsonNode candidate : parameters) {
         if (candidate.path("name").asText().equals(name)) {
@@ -204,7 +238,7 @@ class OpenApiDocumentationTest {
       assertThat(parameter).isNotNull();
       assertThat(parameter.path("in").asText()).isEqualTo("query");
       assertThat(parameter.path("required").asBoolean()).isFalse();
-      assertThat(parameter.path("schema").path("type").asText()).isEqualTo("number");
+      assertThat(parameter.path("schema").path("type").asText()).isEqualTo(scenarioType.getValue());
     }
   }
 

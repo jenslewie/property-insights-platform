@@ -12,7 +12,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -36,6 +38,21 @@ public final class ExportController {
   private static final String INVALID_EXPORT = "Invalid or unsupported export parameters.";
   private static final String SCHOOL_RATING_DELTA = "scenario_school_rating_delta";
   private static final String SQUARE_FOOTAGE_PERCENT = "scenario_square_footage_percent";
+  private static final String BEDROOMS_DELTA = "scenario_bedrooms_delta";
+  private static final String BATHROOMS_DELTA = "scenario_bathrooms_delta";
+  private static final String YEAR_BUILT_DELTA = "scenario_year_built_delta";
+  private static final String LOT_SIZE_DELTA = "scenario_lot_size_delta";
+  private static final String DISTANCE_TO_CITY_CENTER_DELTA =
+      "scenario_distance_to_city_center_delta";
+  private static final Map<String, String> SCENARIO_FIELDS =
+      Map.of(
+          SCHOOL_RATING_DELTA, "school_rating_delta",
+          SQUARE_FOOTAGE_PERCENT, "square_footage_percent",
+          BEDROOMS_DELTA, "bedrooms_delta",
+          BATHROOMS_DELTA, "bathrooms_delta",
+          YEAR_BUILT_DELTA, "year_built_delta",
+          LOT_SIZE_DELTA, "lot_size_delta",
+          DISTANCE_TO_CITY_CENTER_DELTA, "distance_to_city_center_delta");
 
   private final ObjectMapper objectMapper;
   private final SegmentFilterParser filterParser;
@@ -77,11 +94,43 @@ public final class ExportController {
               schema = @Schema(type = "number", format = "double"))
           @RequestParam(name = SQUARE_FOOTAGE_PERCENT, required = false)
           BigDecimal squareFootagePercent,
+      @Parameter(
+              description = "Optional integer change in bedroom count.",
+              schema = @Schema(type = "integer", format = "int32"))
+          @RequestParam(name = BEDROOMS_DELTA, required = false)
+          BigDecimal bedroomsDelta,
+      @Parameter(
+              description = "Optional change in bathroom count.",
+              schema = @Schema(type = "number", format = "double"))
+          @RequestParam(name = BATHROOMS_DELTA, required = false)
+          BigDecimal bathroomsDelta,
+      @Parameter(
+              description = "Optional integer change in year built.",
+              schema = @Schema(type = "integer", format = "int32"))
+          @RequestParam(name = YEAR_BUILT_DELTA, required = false)
+          BigDecimal yearBuiltDelta,
+      @Parameter(
+              description = "Optional integer change in lot size.",
+              schema = @Schema(type = "integer", format = "int32"))
+          @RequestParam(name = LOT_SIZE_DELTA, required = false)
+          BigDecimal lotSizeDelta,
+      @Parameter(
+              description = "Optional change in distance to city center.",
+              schema = @Schema(type = "number", format = "double"))
+          @RequestParam(name = DISTANCE_TO_CITY_CENTER_DELTA, required = false)
+          BigDecimal distanceToCityCenterDelta,
       @Parameter(hidden = true) @RequestParam MultiValueMap<String, String> params) {
     validateFormat(format, params);
     MultiValueMap<String, String> filterParams = new LinkedMultiValueMap<>();
-    ScenarioAdjustments scenario =
-        parseScenario(params, filterParams, schoolRatingDelta, squareFootagePercent);
+    Map<String, BigDecimal> scenarioValues = new LinkedHashMap<>();
+    scenarioValues.put(SCHOOL_RATING_DELTA, schoolRatingDelta);
+    scenarioValues.put(SQUARE_FOOTAGE_PERCENT, squareFootagePercent);
+    scenarioValues.put(BEDROOMS_DELTA, bedroomsDelta);
+    scenarioValues.put(BATHROOMS_DELTA, bathroomsDelta);
+    scenarioValues.put(YEAR_BUILT_DELTA, yearBuiltDelta);
+    scenarioValues.put(LOT_SIZE_DELTA, lotSizeDelta);
+    scenarioValues.put(DISTANCE_TO_CITY_CENTER_DELTA, distanceToCityCenterDelta);
+    ScenarioAdjustments scenario = parseScenario(params, filterParams, scenarioValues);
     SegmentFilter filter = filterParser.parse(filterParams);
     String analysisKey = AnalysisKey.from(filter, scenario);
 
@@ -134,28 +183,19 @@ public final class ExportController {
   private ScenarioAdjustments parseScenario(
       MultiValueMap<String, String> params,
       MultiValueMap<String, String> filterParams,
-      BigDecimal schoolRatingDelta,
-      BigDecimal squareFootagePercent) {
+      Map<String, BigDecimal> scenarioValues) {
     ObjectNode adjustmentNode = objectMapper.createObjectNode();
     params.forEach(
         (name, values) -> {
           if (name.equals("format")) {
             return;
           }
-          if (name.equals(SCHOOL_RATING_DELTA)) {
+          if (scenarioValues.containsKey(name)) {
+            BigDecimal boundValue = scenarioValues.get(name);
             if (values == null || values.size() != 1) {
               throw invalidExport();
             }
-            if (decimalValue(values.getFirst()).compareTo(schoolRatingDelta) != 0) {
-              throw invalidExport();
-            }
-            return;
-          }
-          if (name.equals(SQUARE_FOOTAGE_PERCENT)) {
-            if (values == null || values.size() != 1) {
-              throw invalidExport();
-            }
-            if (decimalValue(values.getFirst()).compareTo(squareFootagePercent) != 0) {
+            if (boundValue == null || decimalValue(values.getFirst()).compareTo(boundValue) != 0) {
               throw invalidExport();
             }
             return;
@@ -163,12 +203,11 @@ public final class ExportController {
           filterParams.put(name, values);
         });
 
-    if (schoolRatingDelta != null) {
-      adjustmentNode.put("school_rating_delta", schoolRatingDelta);
-    }
-    if (squareFootagePercent != null) {
-      adjustmentNode.put("square_footage_percent", squareFootagePercent);
-    }
+    scenarioValues.forEach(
+        (queryParameter, value) -> {
+          String field = SCENARIO_FIELDS.get(queryParameter);
+          if (value != null) adjustmentNode.put(field, value);
+        });
 
     if (adjustmentNode.isEmpty()) {
       return null;

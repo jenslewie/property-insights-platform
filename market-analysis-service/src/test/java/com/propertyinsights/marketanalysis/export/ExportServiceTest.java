@@ -81,7 +81,8 @@ class ExportServiceTest {
   void calculatesScenarioImpactBeforeBuildingReport() {
     ReportData report =
         service.report(
-            filter("min_price", "350000"), new ScenarioAdjustments(new BigDecimal("0.5"), null));
+            filter("min_price", "350000"),
+            new ScenarioAdjustments(new BigDecimal("0.5"), null, null, null, null, null, null));
 
     assertThat(report.scenario().schoolRatingDelta()).isEqualByComparingTo("0.5");
     assertThat(report.priceImpact().propertyCount()).isEqualTo(12);
@@ -105,7 +106,8 @@ class ExportServiceTest {
     assertThatThrownBy(
             () ->
                 service.properties(
-                    filter("min_price", "350000"), new ScenarioAdjustments(BigDecimal.ZERO, null)))
+                    filter("min_price", "350000"),
+                    new ScenarioAdjustments(BigDecimal.ZERO, null, null, null, null, null, null)))
         .isInstanceOfSatisfying(
             ApiException.class,
             problem -> assertThat(problem.status()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));

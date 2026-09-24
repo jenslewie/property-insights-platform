@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getMarketDashboard } from "@/lib/market-analysis/server-api";
 import { parseMarketQuery } from "@/lib/market-analysis/filters";
-import { MarketOverview } from "@/components/market-analysis/market-overview";
 import { MarketWorkspace } from "@/components/market-analysis/market-workspace";
-import { SegmentFiltersForm } from "@/components/market-analysis/segment-filters";
 
 export const metadata: Metadata = {
   title: "Market Analysis",
@@ -50,24 +48,11 @@ export default async function MarketAnalysisPage({
           Property Market Analysis
         </h1>
         <p className="text-slate-600">
-          Explore historical price statistics from the supplied housing CSV
-          sample. The sample has no location or transaction dates.
-        </p>
-        <p className="font-medium text-slate-800" aria-live="polite">
-          {data.summary.matched_count} matching properties out of{" "}
-          {data.summary.total_count} sample records.
+          Explore historical price statistics and evaluate model-predicted price
+          impacts across the supplied housing sample. The sample has no location
+          or transaction dates.
         </p>
       </header>
-      <SegmentFiltersForm
-        filters={parsed.filters}
-        scenario={parsed.scenario}
-        dimension={parsed.dimension}
-      />
-      <MarketOverview
-        summary={data.summary}
-        priceDistribution={data.priceDistribution}
-        featureDistribution={data.featureDistribution}
-      />
       <MarketWorkspace
         data={data}
         filters={parsed.filters}

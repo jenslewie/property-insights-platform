@@ -91,6 +91,39 @@ class PriceImpactServiceTest {
   }
 
   @Test
+  void appliesAdjustmentsToAllSevenModelFeatures() throws Exception {
+    predictions = List.of(new BigDecimal("10"), new BigDecimal("20"));
+    PriceImpactService service = service(List.of(property(1, 3, "8", 1200)), 20);
+
+    service.compare(
+        mapper.readTree("{}"),
+        mapper.readTree(
+            "{\"school_rating_delta\":1,\"square_footage_percent\":5,"
+                + "\"bedrooms_delta\":1,\"bathrooms_delta\":0.5,\"year_built_delta\":5,"
+                + "\"lot_size_delta\":500,\"distance_to_city_center_delta\":0.5}"));
+
+    assertThat(calls)
+        .containsExactly(
+            List.of(
+                new HousingFeatures(
+                    1200,
+                    3,
+                    new BigDecimal("2.0"),
+                    1997,
+                    6800,
+                    new BigDecimal("4.1"),
+                    new BigDecimal("8")),
+                new HousingFeatures(
+                    1260,
+                    4,
+                    new BigDecimal("2.5"),
+                    2002,
+                    7300,
+                    new BigDecimal("4.6"),
+                    new BigDecimal("9"))));
+  }
+
+  @Test
   void rejectsEmptySegmentNoOpAndInvalidScenarioBeforeModelCalls() throws Exception {
     predictions = List.of(new BigDecimal("10"), new BigDecimal("20"));
     PriceImpactService service = service(List.of(property(1, 3, "8")), 20);
@@ -109,6 +142,11 @@ class PriceImpactServiceTest {
         service,
         mapper.readTree("{}"),
         mapper.readTree("{\"school_rating_delta\":20}"),
+        HttpStatus.UNPROCESSABLE_ENTITY);
+    assertProblem(
+        service,
+        mapper.readTree("{}"),
+        mapper.readTree("{\"bedrooms_delta\":0.5}"),
         HttpStatus.UNPROCESSABLE_ENTITY);
     assertProblem(
         service,

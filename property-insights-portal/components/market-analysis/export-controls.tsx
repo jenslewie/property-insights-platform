@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   conditionSearchParams,
   type MarketScenario,
@@ -13,6 +13,7 @@ type Props = {
   filters: SegmentFilters;
   scenario?: MarketScenario;
   matchedCount: number;
+  segmentReady?: boolean;
 };
 
 const exportOptions: Record<
@@ -41,12 +42,31 @@ function safeFilename(
   return match && match[2] === format ? match[1] : null;
 }
 
-export function ExportControls({ filters, scenario, matchedCount }: Props) {
+export function ExportControls({
+  filters,
+  scenario,
+  matchedCount,
+  segmentReady = true,
+}: Props) {
   const [pending, setPending] = useState<ExportFormat | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const firstOptionRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (menuOpen) firstOptionRef.current?.focus();
+  }, [menuOpen]);
+
+  function closeMenu() {
+    setMenuOpen(false);
+    triggerRef.current?.focus();
+  }
 
   async function download(format: ExportFormat) {
-    if (pending || matchedCount === 0) return;
+    if (!segmentReady || pending || matchedCount === 0) return;
+    setMenuOpen(false);
+    triggerRef.current?.focus();
     const option = exportOptions[format];
     const query = new URLSearchParams({ format });
     conditionSearchParams(filters, scenario).forEach((value, key) =>
@@ -105,38 +125,75 @@ export function ExportControls({ filters, scenario, matchedCount }: Props) {
     }
   }
 
+  function handleMenuKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMenu();
+    }
+  }
+
+  function optionButton(
+    format: ExportFormat,
+    title: string,
+    description: string,
+    ref?: React.RefObject<HTMLButtonElement | null>,
+  ) {
+    return (
+      <button
+        aria-busy={pending === format}
+        className="flex w-full flex-col items-start rounded-lg px-3 py-2 text-left hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={!segmentReady || matchedCount === 0 || pending !== null}
+        onClick={() => void download(format)}
+        ref={ref}
+        role="menuitem"
+        type="button"
+      >
+        <span className="font-semibold text-slate-900">{title}</span>
+        <span className="text-sm text-slate-600">{description}</span>
+      </button>
+    );
+  }
+
   return (
-    <section
-      aria-labelledby="market-export-heading"
-      className="flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-    >
-      <div>
-        <h2 className="text-lg font-semibold" id="market-export-heading">
-          Export this segment
-        </h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Local table search, sorting, and pagination do not change exports.
-        </p>
-      </div>
-      <div className="flex flex-wrap gap-3">
-        <button
-          aria-busy={pending === "csv"}
-          className="rounded-lg border border-blue-700 px-4 py-2 font-semibold text-blue-800 hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-slate-400 disabled:text-slate-400"
-          disabled={matchedCount === 0 || pending !== null}
-          onClick={() => void download("csv")}
-          type="button"
-        >
-          {pending === "csv" ? "Preparing CSV…" : "Export segment CSV"}
-        </button>
-        <button
-          aria-busy={pending === "pdf"}
-          className="rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-          disabled={matchedCount === 0 || pending !== null}
-          onClick={() => void download("pdf")}
-          type="button"
-        >
-          {pending === "pdf" ? "Preparing PDF…" : "Export segment PDF"}
-        </button>
+    <div className="relative flex flex-col items-start">
+      <button
+        aria-disabled={!segmentReady}
+        aria-controls="market-export-menu"
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
+        className="rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-800 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+        onClick={() => {
+          if (segmentReady) setMenuOpen((current) => !current);
+        }}
+        onKeyDown={(event) => {
+          if (segmentReady && event.key === "ArrowDown") {
+            event.preventDefault();
+            setMenuOpen(true);
+          }
+        }}
+        ref={triggerRef}
+        type="button"
+      >
+        Export
+      </button>
+      <div
+        className="absolute left-0 top-full z-20 mt-2 min-w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-xl"
+        hidden={!menuOpen}
+        id="market-export-menu"
+        onKeyDown={handleMenuKeyDown}
+        role="menu"
+      >
+        {optionButton(
+          "csv",
+          "Properties CSV",
+          "Filtered property data",
+          firstOptionRef,
+        )}
+        {optionButton(
+          "pdf",
+          "Market analysis PDF",
+          "Market summary and what-if analysis",
+        )}
       </div>
       {pending ? (
         <p className="sr-only" role="status">
@@ -145,12 +202,12 @@ export function ExportControls({ filters, scenario, matchedCount }: Props) {
       ) : null}
       {error ? (
         <p
-          className="w-full rounded-lg border border-red-300 bg-red-50 p-3 text-red-900"
+          className="absolute left-0 top-full z-10 mt-2 min-w-64 rounded-lg border border-red-300 bg-red-50 p-3 text-red-900 shadow-lg"
           role="alert"
         >
           {error}
         </p>
       ) : null}
-    </section>
+    </div>
   );
 }

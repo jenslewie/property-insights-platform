@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, test, vi } from "vitest";
 import MarketAnalysisPage, { metadata } from "./page";
 import type { MarketDashboardData } from "@/lib/market-analysis/server-api";
@@ -7,6 +8,7 @@ const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
 vi.mock("@/lib/market-analysis/server-api", () => ({
@@ -54,10 +56,18 @@ test("loads server aggregates using filters and chart dimension from the URL", a
       name: "Property Market Analysis",
     }),
   ).toBeInTheDocument();
-  expect(screen.getByText(/0 matching properties/i)).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      /explore historical price statistics and evaluate model-predicted price impacts/i,
+    ),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText("0 / 50 properties match this segment."),
+  ).toBeInTheDocument();
 });
 
-test("restores the applied scenario from a direct URL", async () => {
+test("restores the applied scenario in its drawer from a direct URL", async () => {
+  const user = userEvent.setup();
   render(
     await MarketAnalysisPage({
       searchParams: Promise.resolve({
@@ -72,6 +82,10 @@ test("restores the applied scenario from a direct URL", async () => {
     { min_bedrooms: 3 },
     "bedrooms",
   );
+  expect(
+    screen.queryByRole("dialog", { name: "What-if scenario" }),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Edit scenario (1)" }));
   expect(screen.getByLabelText("School rating change")).toHaveValue(1);
   expect(screen.getByLabelText("Square footage change (%)")).toHaveValue(null);
 });

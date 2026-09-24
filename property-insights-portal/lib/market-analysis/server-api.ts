@@ -21,9 +21,7 @@ export async function getMarketDashboard(
   filters: SegmentFilters,
   dimension: FeatureDimension,
 ): Promise<MarketDashboardData> {
-  const baseUrl = (
-    process.env.MARKET_ANALYSIS_API_URL ?? "http://localhost:9002"
-  ).replace(/\/$/, "");
+  const baseUrl = marketAnalysisBaseUrl();
   const query = filterSearchParams(filters).toString();
   const suffix = query ? `?${query}` : "";
 
@@ -38,10 +36,7 @@ export async function getMarketDashboard(
         `${baseUrl}/api/v1/market/distributions/price${suffix}`,
         distributionSchema,
       ),
-      readJson(
-        `${baseUrl}/api/v1/market/distributions/${dimension}${suffix}`,
-        distributionSchema,
-      ),
+      getMarketDistribution(filters, dimension),
     ]);
 
   const dashboard = {
@@ -65,6 +60,28 @@ export async function getMarketDashboard(
   }
 
   return dashboard;
+}
+
+export async function getMarketDistribution(
+  filters: SegmentFilters,
+  dimension: FeatureDimension,
+): Promise<DistributionResponse> {
+  const query = filterSearchParams(filters).toString();
+  const suffix = query ? `?${query}` : "";
+  const distribution = await readJson(
+    `${marketAnalysisBaseUrl()}/api/v1/market/distributions/${dimension}${suffix}`,
+    distributionSchema,
+  );
+  if (distribution.dimension !== dimension) {
+    throw new Error("Market analysis returned an invalid response.");
+  }
+  return distribution;
+}
+
+function marketAnalysisBaseUrl(): string {
+  return (
+    process.env.MARKET_ANALYSIS_API_URL ?? "http://localhost:9002"
+  ).replace(/\/$/, "");
 }
 
 async function readJson<T>(url: string, schema: z.ZodType<T>): Promise<T> {

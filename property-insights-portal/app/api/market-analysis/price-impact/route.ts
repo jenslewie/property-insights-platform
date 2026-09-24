@@ -11,6 +11,11 @@ const integerFields = new Set([
   "year_built",
   "lot_size",
 ]);
+const integerScenarioFields = [
+  "bedrooms_delta",
+  "year_built_delta",
+  "lot_size_delta",
+] as const;
 const filterNamePattern = new RegExp(`^(min|max)_(${marketFields.join("|")})$`);
 
 const filtersSchema = z.record(z.string(), z.number().finite());
@@ -18,6 +23,11 @@ const adjustmentsSchema = z
   .object({
     school_rating_delta: z.number().finite().optional(),
     square_footage_percent: z.number().finite().optional(),
+    bedrooms_delta: z.number().finite().optional(),
+    bathrooms_delta: z.number().finite().optional(),
+    year_built_delta: z.number().finite().optional(),
+    lot_size_delta: z.number().finite().optional(),
+    distance_to_city_center_delta: z.number().finite().optional(),
   })
   .strict()
   .refine((adjustments) =>
@@ -31,7 +41,7 @@ const requestSchema = z
     scenario: z.object({ adjustments: adjustmentsSchema }).strict(),
   })
   .strict()
-  .superRefine(({ filters }, context) => {
+  .superRefine(({ filters, scenario }, context) => {
     for (const [key, value] of Object.entries(filters)) {
       if (!filterNamePattern.test(key)) {
         context.addIssue({
@@ -57,6 +67,17 @@ const requestSchema = z
     );
     if (!parsedFilters.ok) {
       context.addIssue({ code: "custom", message: "Invalid market filters." });
+    }
+
+    for (const field of integerScenarioFields) {
+      const value = scenario.adjustments[field];
+      if (value !== undefined && !Number.isInteger(value)) {
+        context.addIssue({
+          code: "custom",
+          message: "Invalid integer scenario adjustment.",
+        });
+        return;
+      }
     }
   });
 

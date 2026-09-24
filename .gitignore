@@ -35,10 +35,6 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Environment files (keep only explicitly documented examples)
-.env*
-!property-insights-portal/.env.local.example
-
 # Vercel
 .vercel/
 
@@ -49,3 +45,6 @@ next-env.d.ts
 
 # Maven
 target/
+
+# Doc
+docs/

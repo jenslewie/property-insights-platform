@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { getMarketDashboard } from "./server-api";
+import { getMarketDashboard, getMarketDistribution } from "./server-api";
 
 function fixtureFor(url: string) {
   if (url.endsWith("/api/v1/properties")) {
@@ -70,6 +70,29 @@ test("loads the list and filtered aggregate responses from Java", async () => {
   );
   expect(fetchMock).toHaveBeenCalledWith(
     "http://market:9002/api/v1/market/distributions/bedrooms?min_price=200000",
+    { cache: "no-store" },
+  );
+});
+
+test("loads one validated distribution for a filter and dimension", async () => {
+  vi.stubEnv("MARKET_ANALYSIS_API_URL", "http://market:9002");
+  const fetchMock = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(async (input) =>
+      Response.json(fixtureFor(String(input))),
+    );
+
+  await expect(
+    getMarketDistribution({ min_bedrooms: 3 }, "bedrooms"),
+  ).resolves.toEqual({
+    dimension: "bedrooms",
+    matched_count: 0,
+    buckets: [],
+  });
+
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://market:9002/api/v1/market/distributions/bedrooms?min_bedrooms=3",
     { cache: "no-store" },
   );
 });

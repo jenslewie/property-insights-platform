@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { SegmentFiltersForm } from "./segment-filters";
 
@@ -13,27 +14,88 @@ beforeEach(() => {
   push.mockReset();
 });
 
-test("applies active bounds and feature dimension to a shareable URL", async () => {
-  const user = userEvent.setup();
-  render(<SegmentFiltersForm filters={{}} dimension="square_footage" />);
+function renderFilters(
+  filters: Parameters<typeof SegmentFiltersForm>[0]["filters"] = {},
+  scenario?: Parameters<typeof SegmentFiltersForm>[0]["scenario"],
+  dimension: Parameters<
+    typeof SegmentFiltersForm
+  >[0]["dimension"] = "square_footage",
+) {
+  return render(
+    <SegmentFiltersForm
+      filters={filters}
+      scenario={scenario}
+      dimension={dimension}
+    />,
+  );
+}
 
+test("keeps filter controls in a drawer until the dashboard action is opened", async () => {
+  const user = userEvent.setup();
+  renderFilters({ min_bedrooms: 3, min_bathrooms: 3 });
+
+  expect(
+    screen.queryByRole("dialog", { name: "Filters" }),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Filters (2)" }));
+
+  expect(screen.getByRole("dialog", { name: "Filters" })).toBeInTheDocument();
+  expect(screen.getByLabelText("Minimum bedrooms")).toHaveValue(3);
+  expect(screen.getByLabelText("Maximum bedrooms")).toHaveValue(null);
+  expect(
+    screen.getByRole("button", { name: "Close Filters" }),
+  ).toBeInTheDocument();
+});
+
+test("cancel discards filter draft without changing the applied URL", async () => {
+  const user = userEvent.setup();
+  renderFilters({ min_bedrooms: 3 });
+
+  await user.click(screen.getByRole("button", { name: "Filters (1)" }));
+  await user.clear(screen.getByLabelText("Minimum bedrooms"));
+  await user.type(screen.getByLabelText("Minimum bedrooms"), "4");
+  await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+  expect(push).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "Filters (1)" }));
+  expect(screen.getByLabelText("Minimum bedrooms")).toHaveValue(3);
+});
+
+test("focuses the first filter input and returns focus to its trigger", async () => {
+  const user = userEvent.setup();
+  renderFilters();
+
+  const trigger = screen.getByRole("button", { name: "Filters (0)" });
+  await user.click(trigger);
+  const firstInput = screen.getByLabelText("Minimum square footage");
+  expect(firstInput).toHaveFocus();
+
+  await user.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(trigger).toHaveFocus();
+});
+
+test("applies active bounds to a shareable URL and closes the drawer", async () => {
+  const user = userEvent.setup();
+  renderFilters({}, { schoolRatingDelta: 1 }, "bedrooms");
+
+  await user.click(screen.getByRole("button", { name: "Filters (0)" }));
   await user.type(screen.getByLabelText("Minimum price"), "200000");
   await user.type(screen.getByLabelText("Maximum price"), "300000");
-  await user.selectOptions(
-    screen.getByLabelText("Feature distribution"),
-    "bedrooms",
-  );
   await user.click(screen.getByRole("button", { name: "Apply filters" }));
 
   expect(push).toHaveBeenCalledWith(
-    "/market-analysis?min_price=200000&max_price=300000&chart_dimension=bedrooms",
+    "/market-analysis?min_price=200000&max_price=300000&scenario_school_rating_delta=1&chart_dimension=bedrooms",
   );
+  expect(
+    screen.queryByRole("dialog", { name: "Filters" }),
+  ).not.toBeInTheDocument();
 });
 
 test("shows an inverted range error without navigating", async () => {
   const user = userEvent.setup();
-  render(<SegmentFiltersForm filters={{}} dimension="square_footage" />);
+  renderFilters();
 
+  await user.click(screen.getByRole("button", { name: "Filters (0)" }));
   await user.type(screen.getByLabelText("Minimum price"), "300000");
   await user.type(screen.getByLabelText("Maximum price"), "200000");
   await user.click(screen.getByRole("button", { name: "Apply filters" }));
@@ -42,86 +104,84 @@ test("shows an inverted range error without navigating", async () => {
   expect(push).not.toHaveBeenCalled();
 });
 
-test("reset clears bounds but retains the selected chart dimension", async () => {
+test("reset clears filters while keeping scenario and chart dimension", async () => {
   const user = userEvent.setup();
-  render(
-    <SegmentFiltersForm filters={{ min_price: 200000 }} dimension="bedrooms" />,
-  );
+  renderFilters({ min_price: 200000 }, { squareFootagePercent: 5 }, "bedrooms");
 
+  await user.click(screen.getByRole("button", { name: "Filters (1)" }));
   await user.click(screen.getByRole("button", { name: "Reset filters" }));
 
   expect(push).toHaveBeenCalledWith(
-    "/market-analysis?chart_dimension=bedrooms",
+    "/market-analysis?scenario_square_footage_percent=5&chart_dimension=bedrooms",
   );
-  expect(screen.getByLabelText("Minimum price")).toHaveValue(null);
 });
 
-test("applies changed filters together with the applied scenario", async () => {
+test("reset clears draft conditions when no filters are currently applied", async () => {
   const user = userEvent.setup();
-  render(
-    <SegmentFiltersForm
-      filters={{ min_bedrooms: 3 }}
-      scenario={{ schoolRatingDelta: 1 }}
-      dimension="bedrooms"
-    />,
-  );
+  renderFilters();
 
-  await user.clear(screen.getByLabelText("Minimum bedrooms"));
+  await user.click(screen.getByRole("button", { name: "Filters (0)" }));
   await user.type(screen.getByLabelText("Minimum bedrooms"), "4");
-  await user.click(screen.getByRole("button", { name: "Apply filters" }));
+  await user.click(screen.getByRole("button", { name: "Reset filters" }));
 
-  expect(push).toHaveBeenCalledWith(
-    "/market-analysis?min_bedrooms=4&scenario_school_rating_delta=1&chart_dimension=bedrooms",
-  );
+  expect(screen.getByLabelText("Minimum bedrooms")).toHaveValue(null);
+  expect(push).not.toHaveBeenCalled();
 });
 
-test("applies a chart-only change without changing market conditions", async () => {
+test("removes only the selected applied filter chip", async () => {
   const user = userEvent.setup();
-  render(
-    <SegmentFiltersForm
-      filters={{ min_bedrooms: 3 }}
-      scenario={{ squareFootagePercent: 5 }}
-      dimension="square_footage"
-    />,
-  );
-
-  await user.selectOptions(
-    screen.getByLabelText("Feature distribution"),
+  renderFilters(
+    { min_bedrooms: 3, max_bedrooms: 5, min_bathrooms: 2 },
+    { schoolRatingDelta: 1 },
     "bedrooms",
   );
-  await user.click(screen.getByRole("button", { name: "Apply filters" }));
+
+  expect(screen.getByText("Bedrooms ≥ 3")).toBeInTheDocument();
+  await user.click(
+    screen.getByRole("button", { name: "Remove filter Bedrooms ≥ 3" }),
+  );
 
   expect(push).toHaveBeenCalledWith(
-    "/market-analysis?min_bedrooms=3&scenario_square_footage_percent=5&chart_dimension=bedrooms",
+    "/market-analysis?max_bedrooms=5&min_bathrooms=2&scenario_school_rating_delta=1&chart_dimension=bedrooms",
   );
 });
 
-test("restores filter and scenario drafts when browser history changes the URL", async () => {
+test("restores the filter draft after applied filters change", async () => {
   const user = userEvent.setup();
-  const { rerender } = render(
-    <SegmentFiltersForm
-      filters={{ min_bedrooms: 3 }}
-      scenario={{ schoolRatingDelta: 1 }}
-      dimension="bedrooms"
-    />,
-  );
+  let updateFilters: ((filters: { min_bedrooms: number }) => void) | undefined;
+  function Harness() {
+    const [filters, setFilters] = useState({ min_bedrooms: 3 });
+    updateFilters = setFilters;
+    return <SegmentFiltersForm filters={filters} dimension="square_footage" />;
+  }
+  render(<Harness />);
 
-  rerender(
+  await user.click(screen.getByRole("button", { name: "Filters (1)" }));
+  await user.clear(screen.getByLabelText("Minimum bedrooms"));
+  await user.type(screen.getByLabelText("Minimum bedrooms"), "9");
+  await act(async () => {
+    updateFilters?.({ min_bedrooms: 4 });
+  });
+  await user.click(screen.getByRole("button", { name: "Filters (1)" }));
+
+  expect(screen.getByLabelText("Minimum bedrooms")).toHaveValue(4);
+  expect(screen.getByText("Bedrooms ≥ 4")).toBeInTheDocument();
+});
+
+test("keeps filter trigger focused after applying updated conditions", async () => {
+  const user = userEvent.setup();
+  const view = renderFilters();
+  const trigger = screen.getByRole("button", { name: "Filters (0)" });
+
+  await user.click(trigger);
+  await user.type(screen.getByLabelText("Minimum price"), "200000");
+  await user.click(screen.getByRole("button", { name: "Apply filters" }));
+  view.rerender(
     <SegmentFiltersForm
-      filters={{ min_bedrooms: 4 }}
-      scenario={{ squareFootagePercent: 5 }}
+      filters={{ min_price: 200000 }}
       dimension="square_footage"
     />,
   );
-  expect(screen.getByLabelText("Minimum bedrooms")).toHaveValue(4);
-  expect(screen.getByLabelText("Feature distribution")).toHaveValue(
-    "square_footage",
-  );
 
-  await user.clear(screen.getByLabelText("Minimum bedrooms"));
-  await user.type(screen.getByLabelText("Minimum bedrooms"), "5");
-  await user.click(screen.getByRole("button", { name: "Apply filters" }));
-  expect(push).toHaveBeenCalledWith(
-    "/market-analysis?min_bedrooms=5&scenario_square_footage_percent=5&chart_dimension=square_footage",
-  );
+  expect(screen.getByRole("button", { name: "Filters (1)" })).toHaveFocus();
 });

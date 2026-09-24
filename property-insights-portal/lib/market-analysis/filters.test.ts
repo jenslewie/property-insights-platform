@@ -40,6 +40,10 @@ describe("market query parsing", () => {
     ["inverted range", { min_price: "3", max_price: "2" }],
     ["price is not a feature dimension", { chart_dimension: "price" }],
     ["zero-only scenario", { scenario_school_rating_delta: "0" }],
+    [
+      "fractional integer scenario adjustment",
+      { scenario_bedrooms_delta: "0.5" },
+    ],
     ["duplicate scenario value", { scenario_school_rating_delta: ["1", "2"] }],
     ["unknown scenario parameter", { scenario_id: "abc" }],
     [
@@ -72,6 +76,52 @@ describe("market query parsing", () => {
       dashboardSearchParams(filters, "bedrooms", scenario).toString(),
     ).toBe(
       "min_bedrooms=3&scenario_school_rating_delta=1&scenario_square_footage_percent=5&chart_dimension=bedrooms",
+    );
+  });
+
+  test("parses scenario adjustments for all seven model features", () => {
+    expect(
+      parseMarketQuery({
+        scenario_school_rating_delta: "1",
+        scenario_square_footage_percent: "5",
+        scenario_bedrooms_delta: "1",
+        scenario_bathrooms_delta: "0.5",
+        scenario_year_built_delta: "5",
+        scenario_lot_size_delta: "500",
+        scenario_distance_to_city_center_delta: "0.5",
+      }),
+    ).toEqual({
+      ok: true,
+      filters: {},
+      scenario: {
+        schoolRatingDelta: 1,
+        squareFootagePercent: 5,
+        bedroomsDelta: 1,
+        bathroomsDelta: 0.5,
+        yearBuiltDelta: 5,
+        lotSizeDelta: 500,
+        distanceToCityCenterDelta: 0.5,
+      },
+      dimension: "square_footage",
+    });
+  });
+
+  test("serializes all seven scenario adjustments into the dashboard URL", () => {
+    expect(
+      conditionSearchParams(
+        {},
+        {
+          schoolRatingDelta: 1,
+          squareFootagePercent: 5,
+          bedroomsDelta: 1,
+          bathroomsDelta: 0.5,
+          yearBuiltDelta: 5,
+          lotSizeDelta: 500,
+          distanceToCityCenterDelta: 0.5,
+        },
+      ).toString(),
+    ).toBe(
+      "scenario_school_rating_delta=1&scenario_square_footage_percent=5&scenario_bedrooms_delta=1&scenario_bathrooms_delta=0.5&scenario_year_built_delta=5&scenario_lot_size_delta=500&scenario_distance_to_city_center_delta=0.5",
     );
   });
 

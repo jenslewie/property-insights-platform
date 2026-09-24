@@ -31,10 +31,12 @@ class AnalysisKeyTest {
     String first =
         AnalysisKey.from(
             parser.parse(firstFilters),
-            new ScenarioAdjustments(new BigDecimal("1.00"), BigDecimal.ZERO));
+            new ScenarioAdjustments(
+                new BigDecimal("1.00"), BigDecimal.ZERO, null, null, null, null, null));
     String equivalent =
         AnalysisKey.from(
-            parser.parse(reorderedFilters), new ScenarioAdjustments(new BigDecimal("1.0"), null));
+            parser.parse(reorderedFilters),
+            new ScenarioAdjustments(new BigDecimal("1.0"), null, null, null, null, null, null));
 
     assertThat(equivalent).isEqualTo(first);
   }
@@ -44,16 +46,28 @@ class AnalysisKeyTest {
     LinkedMultiValueMap<String, String> filters = new LinkedMultiValueMap<>();
     filters.add("min_bedrooms", "3");
     var filter = parser.parse(filters);
-    String original = AnalysisKey.from(filter, new ScenarioAdjustments(BigDecimal.ONE, null));
+    String original =
+        AnalysisKey.from(
+            filter, new ScenarioAdjustments(BigDecimal.ONE, null, null, null, null, null, null));
 
     LinkedMultiValueMap<String, String> changedFilters = new LinkedMultiValueMap<>();
     changedFilters.add("min_bedrooms", "4");
 
     assertThat(
             AnalysisKey.from(
-                parser.parse(changedFilters), new ScenarioAdjustments(BigDecimal.ONE, null)))
+                parser.parse(changedFilters),
+                new ScenarioAdjustments(BigDecimal.ONE, null, null, null, null, null, null)))
         .isNotEqualTo(original);
-    assertThat(AnalysisKey.from(filter, new ScenarioAdjustments(new BigDecimal("2"), null)))
+    assertThat(
+            AnalysisKey.from(
+                filter,
+                new ScenarioAdjustments(new BigDecimal("2"), null, null, null, null, null, null)))
+        .isNotEqualTo(original);
+    assertThat(
+            AnalysisKey.from(
+                filter,
+                new ScenarioAdjustments(
+                    BigDecimal.ONE, null, BigDecimal.ONE, null, null, null, null)))
         .isNotEqualTo(original);
   }
 }

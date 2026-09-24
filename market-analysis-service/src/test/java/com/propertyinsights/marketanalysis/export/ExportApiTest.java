@@ -72,7 +72,13 @@ class ExportApiTest {
             get(EXPORT_PATH)
                 .param("format", "csv")
                 .param("min_price", "350000")
-                .param("scenario_school_rating_delta", "0.5"));
+                .param("scenario_school_rating_delta", "0.5")
+                .param("scenario_square_footage_percent", "5")
+                .param("scenario_bedrooms_delta", "1")
+                .param("scenario_bathrooms_delta", "0.5")
+                .param("scenario_year_built_delta", "5")
+                .param("scenario_lot_size_delta", "500")
+                .param("scenario_distance_to_city_center_delta", "0.5"));
     String csv = lastCsv;
 
     verifyNoInteractions(predictionClient);
@@ -83,7 +89,13 @@ class ExportApiTest {
                 get(EXPORT_PATH)
                     .param("format", "pdf")
                     .param("min_price", "350000")
-                    .param("scenario_school_rating_delta", "0.5"))
+                    .param("scenario_school_rating_delta", "0.5")
+                    .param("scenario_square_footage_percent", "5")
+                    .param("scenario_bedrooms_delta", "1")
+                    .param("scenario_bathrooms_delta", "0.5")
+                    .param("scenario_year_built_delta", "5")
+                    .param("scenario_lot_size_delta", "500")
+                    .param("scenario_distance_to_city_center_delta", "0.5"))
             .andExpect(request().asyncStarted())
             .andReturn();
     byte[] pdf =
@@ -106,6 +118,12 @@ class ExportApiTest {
               "Historical price summary",
               "Predicted baseline and scenario",
               "school_rating_delta: 0.5",
+              "square_footage_percent: 5",
+              "bedrooms_delta: 1",
+              "bathrooms_delta: 0.5",
+              "year_built_delta: 5",
+              "lot_size_delta: 500",
+              "distance_to_city_center_delta: 0.5",
               GENERATED_AT.toString());
       for (Long id : csvIds) {
         assertThat(text).contains("Property ID: " + id);

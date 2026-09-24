@@ -7,6 +7,11 @@ const requestBody = {
     adjustments: {
       school_rating_delta: 1,
       square_footage_percent: 5,
+      bedrooms_delta: 1,
+      bathrooms_delta: 0.5,
+      year_built_delta: 5,
+      lot_size_delta: 500,
+      distance_to_city_center_delta: 0.5,
     },
   },
 };
@@ -81,6 +86,7 @@ describe("POST /api/market-analysis/price-impact", () => {
     },
     { filters: {}, scenario: { adjustments: {} } },
     { filters: {}, scenario: { adjustments: { school_rating_delta: 0 } } },
+    { filters: {}, scenario: { adjustments: { bedrooms_delta: 0.5 } } },
     { filters: {}, scenario: { adjustments: { unknown: 1 } } },
     { filters: {}, scenario: { adjustments: { school_rating_delta: "1" } } },
     { ...requestBody, extra: true },

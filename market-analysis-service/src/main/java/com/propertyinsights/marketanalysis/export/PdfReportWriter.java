@@ -116,6 +116,16 @@ public final class PdfReportWriter {
         "square_footage_percent: " + adjustment(scenario.squareFootagePercent()),
         pages.bodyFont(),
         9);
+    pages.writeLine("bedrooms_delta: " + adjustment(scenario.bedroomsDelta()), pages.bodyFont(), 9);
+    pages.writeLine(
+        "bathrooms_delta: " + adjustment(scenario.bathroomsDelta()), pages.bodyFont(), 9);
+    pages.writeLine(
+        "year_built_delta: " + adjustment(scenario.yearBuiltDelta()), pages.bodyFont(), 9);
+    pages.writeLine("lot_size_delta: " + adjustment(scenario.lotSizeDelta()), pages.bodyFont(), 9);
+    pages.writeLine(
+        "distance_to_city_center_delta: " + adjustment(scenario.distanceToCityCenterDelta()),
+        pages.bodyFont(),
+        9);
     pages.writeLine("Predicted baseline and scenario:", pages.headingFont(), 11);
     pages.writeLine("Selected properties: " + impact.propertyCount(), pages.bodyFont(), 9);
     writePredictedMetric(

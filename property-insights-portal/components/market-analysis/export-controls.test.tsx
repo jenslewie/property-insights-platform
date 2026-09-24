@@ -23,6 +23,18 @@ function mockDownload() {
   return { createObjectURL, revokeObjectURL, clicks };
 }
 
+async function chooseExport(
+  user: ReturnType<typeof userEvent.setup>,
+  format: "csv" | "pdf",
+) {
+  await user.click(screen.getByRole("button", { name: "Export" }));
+  await user.click(
+    screen.getByRole("menuitem", {
+      name: format === "csv" ? /Properties CSV/ : /Market analysis PDF/,
+    }),
+  );
+}
+
 test("exports the active segment as CSV and revokes the temporary object URL", async () => {
   const user = userEvent.setup();
   const downloads = mockDownload();
@@ -42,7 +54,7 @@ test("exports the active segment as CSV and revokes the temporary object URL", a
     />,
   );
 
-  await user.click(screen.getByRole("button", { name: "Export segment CSV" }));
+  await chooseExport(user, "csv");
 
   expect(fetchMock).toHaveBeenCalledWith(
     "/api/market-analysis/export?format=csv&min_price=200000&scenario_school_rating_delta=1",
@@ -56,9 +68,7 @@ test("exports the active segment as CSV and revokes the temporary object URL", a
       "blob:sample-export",
     );
   });
-  expect(
-    screen.getByText(/local table search, sorting, and pagination/i),
-  ).toBeInTheDocument();
+  expect(screen.getByText("Filtered property data")).toBeInTheDocument();
 });
 
 test("exports a PDF with the filename provided by Java", async () => {
@@ -74,7 +84,7 @@ test("exports a PDF with the filename provided by Java", async () => {
   );
   render(<ExportControls filters={{ max_price: 500000 }} matchedCount={2} />);
 
-  await user.click(screen.getByRole("button", { name: "Export segment PDF" }));
+  await chooseExport(user, "pdf");
 
   expect(fetchMock).toHaveBeenCalledWith(
     "/api/market-analysis/export?format=pdf&max_price=500000",
@@ -118,9 +128,9 @@ test("a delayed PDF export reuses the same applied conditions as the earlier CSV
     />,
   );
 
-  await user.click(screen.getByRole("button", { name: "Export segment CSV" }));
+  await chooseExport(user, "csv");
   await waitFor(() => expect(downloads.clicks).toHaveLength(1));
-  await user.click(screen.getByRole("button", { name: "Export segment PDF" }));
+  await chooseExport(user, "pdf");
   await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   resolvePdf?.(
     new Response(new Uint8Array([37, 80, 68, 70]), {
@@ -147,15 +157,17 @@ test("a delayed PDF export reuses the same applied conditions as the earlier CSV
   ]);
 });
 
-test("disables both exports when the segment has no matches", () => {
+test("offers both disabled export actions when the segment has no matches", async () => {
+  const user = userEvent.setup();
   const fetchMock = vi.spyOn(globalThis, "fetch");
   render(<ExportControls filters={{}} matchedCount={0} />);
 
+  await user.click(screen.getByRole("button", { name: "Export" }));
   expect(
-    screen.getByRole("button", { name: "Export segment CSV" }),
+    screen.getByRole("menuitem", { name: /Properties CSV/ }),
   ).toBeDisabled();
   expect(
-    screen.getByRole("button", { name: "Export segment PDF" }),
+    screen.getByRole("menuitem", { name: /Market analysis PDF/ }),
   ).toBeDisabled();
   expect(fetchMock).not.toHaveBeenCalled();
 });
@@ -168,7 +180,7 @@ test("shows a stale-data message for 404 without creating a download", async () 
   );
   render(<ExportControls filters={{}} matchedCount={4} />);
 
-  await user.click(screen.getByRole("button", { name: "Export segment CSV" }));
+  await chooseExport(user, "csv");
 
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "This segment no longer has exportable records.",
@@ -184,7 +196,7 @@ test("rejects a successful response with the wrong media type", async () => {
   );
   render(<ExportControls filters={{}} matchedCount={4} />);
 
-  await user.click(screen.getByRole("button", { name: "Export segment PDF" }));
+  await chooseExport(user, "pdf");
 
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "The export could not be downloaded.",
@@ -204,9 +216,10 @@ test("prevents duplicate requests while one export is loading", async () => {
   );
   render(<ExportControls filters={{}} matchedCount={4} />);
 
-  await user.click(screen.getByRole("button", { name: "Export segment CSV" }));
+  await chooseExport(user, "csv");
+  await user.click(screen.getByRole("button", { name: "Export" }));
   expect(
-    screen.getByRole("button", { name: "Export segment PDF" }),
+    screen.getByRole("menuitem", { name: /Market analysis PDF/ }),
   ).toBeDisabled();
   expect(fetchMock).toHaveBeenCalledTimes(1);
   resolveFetch?.(
@@ -218,4 +231,21 @@ test("prevents duplicate requests while one export is loading", async () => {
     }),
   );
   await waitFor(() => expect(downloads.revokeObjectURL).toHaveBeenCalled());
+});
+
+test("opens and closes the export menu by keyboard and focuses its first option", async () => {
+  const user = userEvent.setup();
+  render(<ExportControls filters={{}} matchedCount={4} />);
+
+  const trigger = screen.getByRole("button", { name: "Export" });
+  trigger.focus();
+  await user.keyboard("{Enter}");
+  expect(screen.getByRole("menu")).toBeInTheDocument();
+  expect(
+    screen.getByRole("menuitem", { name: /Properties CSV/ }),
+  ).toHaveFocus();
+
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  expect(trigger).toHaveFocus();
 });

@@ -83,6 +83,30 @@ describe("GET /api/market-analysis/export", () => {
     expect([...csvQuery.entries()]).toEqual([...pdfQuery.entries()]);
   });
 
+  test("forwards all seven scenario adjustments to CSV exports", async () => {
+    vi.stubEnv("MARKET_ANALYSIS_API_URL", "http://market:9002");
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(new Uint8Array([1]), {
+        headers: {
+          "Content-Type": "text/csv",
+          "Content-Disposition": `attachment; filename=property-market-analysis_${analysisKey}.csv`,
+        },
+      }),
+    );
+
+    const response = await GET(
+      new Request(
+        "http://localhost/api/market-analysis/export?format=csv&scenario_school_rating_delta=1&scenario_square_footage_percent=5&scenario_bedrooms_delta=1&scenario_bathrooms_delta=0.5&scenario_year_built_delta=5&scenario_lot_size_delta=500&scenario_distance_to_city_center_delta=0.5",
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://market:9002/api/v1/market/export?format=csv&scenario_school_rating_delta=1&scenario_square_footage_percent=5&scenario_bedrooms_delta=1&scenario_bathrooms_delta=0.5&scenario_year_built_delta=5&scenario_lot_size_delta=500&scenario_distance_to_city_center_delta=0.5",
+      { cache: "no-store" },
+    );
+  });
+
   test.each([
     "format=csv&type=data",
     "type=data&format=csv",

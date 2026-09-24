@@ -34,7 +34,17 @@ public final class AnalysisKey {
     return "school_rating_delta="
         + canonical(scenario.schoolRatingDelta())
         + ";square_footage_percent="
-        + canonical(scenario.squareFootagePercent());
+        + canonical(scenario.squareFootagePercent())
+        + ";bedrooms_delta="
+        + canonical(scenario.bedroomsDelta())
+        + ";bathrooms_delta="
+        + canonical(scenario.bathroomsDelta())
+        + ";year_built_delta="
+        + canonical(scenario.yearBuiltDelta())
+        + ";lot_size_delta="
+        + canonical(scenario.lotSizeDelta())
+        + ";distance_to_city_center_delta="
+        + canonical(scenario.distanceToCityCenterDelta());
   }
 
   private static String canonical(java.math.BigDecimal value) {

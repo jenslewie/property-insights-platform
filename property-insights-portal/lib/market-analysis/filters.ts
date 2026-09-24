@@ -19,7 +19,28 @@ export type MarketQueryResult =
 export type MarketScenario = {
   schoolRatingDelta?: number;
   squareFootagePercent?: number;
+  bedroomsDelta?: number;
+  bathroomsDelta?: number;
+  yearBuiltDelta?: number;
+  lotSizeDelta?: number;
+  distanceToCityCenterDelta?: number;
 };
+
+const scenarioParameters = [
+  ["scenario_school_rating_delta", "schoolRatingDelta"],
+  ["scenario_square_footage_percent", "squareFootagePercent"],
+  ["scenario_bedrooms_delta", "bedroomsDelta"],
+  ["scenario_bathrooms_delta", "bathroomsDelta"],
+  ["scenario_year_built_delta", "yearBuiltDelta"],
+  ["scenario_lot_size_delta", "lotSizeDelta"],
+  ["scenario_distance_to_city_center_delta", "distanceToCityCenterDelta"],
+] as const satisfies ReadonlyArray<readonly [string, keyof MarketScenario]>;
+
+const integerScenarioFields = new Set<keyof MarketScenario>([
+  "bedroomsDelta",
+  "yearBuiltDelta",
+  "lotSizeDelta",
+]);
 
 const integerFields = new Set<MarketField>([
   "square_footage",
@@ -51,24 +72,24 @@ export function parseMarketQuery(
       continue;
     }
 
-    if (
-      key === "scenario_school_rating_delta" ||
-      key === "scenario_square_footage_percent"
-    ) {
+    const scenarioParameter = scenarioParameters.find(
+      ([parameter]) => parameter === key,
+    );
+    if (scenarioParameter) {
+      const scenarioField = scenarioParameter[1];
       scenarioWasSpecified = true;
       if (!decimalPattern.test(raw.trim())) {
         return { ok: false, error: "Invalid market scenario parameter." };
       }
       const value = Number(raw.trim());
-      if (!Number.isFinite(value)) {
+      if (
+        !Number.isFinite(value) ||
+        (integerScenarioFields.has(scenarioField) && !Number.isInteger(value))
+      ) {
         return { ok: false, error: "Invalid market scenario parameter." };
       }
       if (value !== 0) {
-        if (key === "scenario_school_rating_delta") {
-          scenario.schoolRatingDelta = value;
-        } else {
-          scenario.squareFootagePercent = value;
-        }
+        scenario[scenarioField] = value;
       }
       continue;
     }
@@ -145,17 +166,9 @@ export function conditionSearchParams(
   scenario?: MarketScenario,
 ): URLSearchParams {
   const params = filterSearchParams(filters);
-  if (scenario?.schoolRatingDelta !== undefined) {
-    params.set(
-      "scenario_school_rating_delta",
-      String(scenario.schoolRatingDelta),
-    );
-  }
-  if (scenario?.squareFootagePercent !== undefined) {
-    params.set(
-      "scenario_square_footage_percent",
-      String(scenario.squareFootagePercent),
-    );
+  for (const [parameter, field] of scenarioParameters) {
+    const value = scenario?.[field];
+    if (value !== undefined) params.set(parameter, String(value));
   }
   return params;
 }
