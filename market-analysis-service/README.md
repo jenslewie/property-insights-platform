@@ -40,16 +40,13 @@ The service is available on port `9002`; its health endpoint is at
 <http://localhost:9002/health>.
 
 When the service is running, browse its interactive API documentation at
-<http://localhost:9002/swagger-ui/index.html>. The generated OpenAPI JSON is available at
-<http://localhost:9002/v3/api-docs>.
+<http://localhost:9002/swagger-ui/index.html>. 
 
 Stop only the market analysis container, leaving the model service running:
 
 ```bash
 docker compose stop market-analysis-service
 ```
-
-See the [root README](../README.md) for the full platform deployment command.
 
 ## Verification
 

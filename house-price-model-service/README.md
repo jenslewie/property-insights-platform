@@ -49,8 +49,6 @@ Stop only the model service:
 docker compose stop house-price-model-service
 ```
 
-See the [root README](../README.md) for the full platform deployment command.
-
 ## Verification
 
 Run from `house-price-model-service/`:

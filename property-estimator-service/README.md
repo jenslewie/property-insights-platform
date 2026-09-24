@@ -40,8 +40,6 @@ Stop only the estimator container, leaving the model service running:
 docker compose stop property-estimator-service
 ```
 
-See the [root README](../README.md) for the full platform deployment command.
-
 ## Verification
 
 Run from `property-estimator-service/`:
