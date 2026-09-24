@@ -54,8 +54,6 @@ class HttpModelPredictionClientTest {
           converters.add(new MappingJackson2HttpMessageConverter(mapper));
         });
 
-    // 在设置 request factory 和 message converters 后绑定 mock server，
-    // 再 build RestClient。
     server = MockRestServiceServer.bindTo(builder).build();
     client = new HttpModelPredictionClient(builder.build());
   }

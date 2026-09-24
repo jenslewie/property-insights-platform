@@ -43,7 +43,6 @@ public final class CsvExportWriter {
           row.price());
     }
 
-    // Streaming response 的 OutputStream 由 servlet 管理，只 flush 不关闭。
     printer.flush();
   }
 }

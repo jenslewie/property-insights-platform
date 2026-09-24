@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const maximumBuildYear = new Date().getFullYear() + 5;
+const maximumBuildYear = new Date().getUTCFullYear() + 5;
 
 export const propertySchema = z.object({
   square_footage: z.number().int().gt(0).max(10_000),

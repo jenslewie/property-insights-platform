@@ -6,6 +6,7 @@ import {
   conditionSearchParams,
   dashboardSearchParams,
   filterSearchParams,
+  matchesSegment,
   parseMarketQuery,
 } from "@/lib/market-analysis/filters";
 import type {
@@ -18,6 +19,7 @@ import {
   distributionSchema,
   type DistributionResponse,
 } from "@/lib/market-analysis/schemas";
+import { validateScenario } from "@/lib/market-analysis/scenario-validation";
 import { ExportControls } from "./export-controls";
 import { MarketOverview } from "./market-overview";
 import { PriceImpact } from "./price-impact";
@@ -81,6 +83,15 @@ export function MarketWorkspace({ data, filters, scenario, dimension }: Props) {
   const serverFiltersKey = filterSearchParams(filters).toString();
   const featureRequestKey = activeFiltersKey + "|" + activeDimension;
   const segmentMatchesServerData = activeFiltersKey === serverFiltersKey;
+  const segmentProperties = segmentMatchesServerData
+    ? data.properties.properties.filter((property) =>
+        matchesSegment(property, activeFilters),
+      )
+    : [];
+  const scenarioValidationErrors = validateScenario(
+    activeScenario,
+    segmentProperties,
+  );
   const scenarioDrawerConditionKey = `${conditionSearchParams(activeFilters, activeScenario).toString()}|${activeDimension}`;
   if (
     scenarioDrawerKey !== null &&
@@ -186,6 +197,7 @@ export function MarketWorkspace({ data, filters, scenario, dimension }: Props) {
           scenario={activeScenario}
           dimension={activeDimension}
           propertyCount={data.summary.matched_count}
+          properties={segmentProperties}
           segmentReady={segmentMatchesServerData}
           open={scenarioDrawerOpen}
           onOpenChange={(nextOpen) =>
@@ -234,6 +246,7 @@ export function MarketWorkspace({ data, filters, scenario, dimension }: Props) {
                 filters={activeFilters}
                 propertyCount={data.summary.matched_count}
                 scenario={activeScenario}
+                validationErrors={scenarioValidationErrors}
                 onEditScenario={() =>
                   setScenarioDrawerKey(scenarioDrawerConditionKey)
                 }

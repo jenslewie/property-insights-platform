@@ -49,8 +49,7 @@ export default async function MarketAnalysisPage({
         </h1>
         <p className="text-slate-600">
           Explore historical price statistics and evaluate model-predicted price
-          impacts across the supplied housing sample. The sample has no location
-          or transaction dates.
+          impacts across the supplied housing sample.
         </p>
       </header>
       <MarketWorkspace

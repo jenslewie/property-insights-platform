@@ -25,6 +25,7 @@ public final class ApiExceptionHandler {
         .addKeyValue("event", "api_request_rejected")
         .addKeyValue("status", error.status().value())
         .addKeyValue("error_type", error.getClass().getSimpleName())
+        .setCause(error)
         .log("API request rejected");
 
     return response(error.status(), error.getMessage());
@@ -38,6 +39,7 @@ public final class ApiExceptionHandler {
         .addKeyValue("event", "api_request_rejected")
         .addKeyValue("status", HttpStatus.UNPROCESSABLE_ENTITY.value())
         .addKeyValue("error_type", error.getClass().getSimpleName())
+        .setCause(error)
         .log("Request body is malformed or unreadable");
 
     return response(HttpStatus.UNPROCESSABLE_ENTITY, "Malformed or unreadable JSON request body.");
@@ -52,6 +54,7 @@ public final class ApiExceptionHandler {
           .addKeyValue("event", "api_request_rejected")
           .addKeyValue("status", frameworkError.getStatusCode().value())
           .addKeyValue("error_type", error.getClass().getSimpleName())
+          .setCause(error)
           .log("API request rejected");
 
       return response(

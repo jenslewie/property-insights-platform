@@ -13,6 +13,7 @@ import {
   priceImpactResponseSchema,
   type PriceImpactResponse,
 } from "@/lib/market-analysis/schemas";
+import type { ScenarioValidationErrors } from "@/lib/market-analysis/scenario-validation";
 import { formatNumericValue } from "@/lib/number-format";
 
 type Props = {
@@ -20,6 +21,7 @@ type Props = {
   scenario: MarketScenario | undefined;
   dimension: FeatureDimension;
   propertyCount: number;
+  validationErrors?: ScenarioValidationErrors;
   onEditScenario?: () => void;
 };
 
@@ -69,6 +71,12 @@ function requestBody(
       : { distance_to_city_center_delta: scenario.distanceToCityCenterDelta }),
   };
   return JSON.stringify({ filters, scenario: { adjustments } });
+}
+
+function validationKey(errors?: ScenarioValidationErrors): string {
+  return Object.values(errors ?? {})
+    .flatMap((issue) => (issue ? [issue.message] : []))
+    .join("|");
 }
 
 function ImpactResults({ result }: { result: PriceImpactResponse }) {
@@ -151,13 +159,19 @@ export function PriceImpact(props: Props) {
     props.filters,
     props.scenario,
   ).toString();
-  return <PriceImpactState key={conditionKey} {...props} />;
+  return (
+    <PriceImpactState
+      key={`${conditionKey}|${validationKey(props.validationErrors)}`}
+      {...props}
+    />
+  );
 }
 
 function PriceImpactState({
   filters,
   scenario,
   propertyCount,
+  validationErrors = {},
   onEditScenario,
 }: Props) {
   const latestRequest = useRef(0);
@@ -171,6 +185,10 @@ function PriceImpactState({
   const conditionKey = conditionSearchParams(filters, scenario).toString();
   const currentRequestBody =
     scenario === undefined ? null : requestBody(filters, scenario);
+  const validationMessages = Object.values(validationErrors).flatMap((issue) =>
+    issue ? [issue.message] : [],
+  );
+  const validationKey = validationMessages.join("|");
 
   if (previousPropertyCount !== propertyCount) {
     setPreviousPropertyCount(propertyCount);
@@ -183,6 +201,12 @@ function PriceImpactState({
   useEffect(() => {
     const requestId = ++latestRequest.current;
     let active = true;
+
+    if (validationKey !== "") {
+      return () => {
+        active = false;
+      };
+    }
 
     if (currentRequestBody === null || propertyCount === 0) {
       return () => {
@@ -234,7 +258,7 @@ function PriceImpactState({
       active = false;
       if (latestRequest.current === requestId) latestRequest.current += 1;
     };
-  }, [conditionKey, currentRequestBody, propertyCount, retry]);
+  }, [conditionKey, currentRequestBody, propertyCount, retry, validationKey]);
 
   return (
     <section
@@ -260,12 +284,25 @@ function PriceImpactState({
           No properties match this segment, so no predicted impact is available.
         </p>
       ) : null}
-      {propertyCount > 0 && pending ? (
+      {propertyCount > 0 && validationMessages.length > 0 ? (
+        <div
+          className="rounded-lg border border-red-300 bg-red-50 p-3 text-red-900"
+          role="alert"
+        >
+          <p>Correct these scenario adjustments before calculating impact.</p>
+          <ul className="mt-1 list-inside list-disc">
+            {validationMessages.map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {propertyCount > 0 && validationMessages.length === 0 && pending ? (
         <p className="text-sm text-slate-600" role="status">
           Calculating market predictions…
         </p>
       ) : null}
-      {propertyCount > 0 && requestError ? (
+      {propertyCount > 0 && validationMessages.length === 0 && requestError ? (
         <div
           className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-300 bg-red-50 p-3 text-red-900"
           role="alert"
@@ -284,7 +321,7 @@ function PriceImpactState({
           </button>
         </div>
       ) : null}
-      {propertyCount > 0 && result ? (
+      {propertyCount > 0 && validationMessages.length === 0 && result ? (
         <>
           <div className="rounded-xl border border-violet-200 bg-white p-4">
             <p className="text-sm font-medium text-slate-700">

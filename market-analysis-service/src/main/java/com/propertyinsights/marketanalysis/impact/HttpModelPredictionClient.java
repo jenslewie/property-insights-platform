@@ -17,6 +17,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.servlet.View;
 
 @Component
 public final class HttpModelPredictionClient implements ModelPredictionClient {
@@ -70,6 +71,7 @@ public final class HttpModelPredictionClient implements ModelPredictionClient {
           .atWarn()
           .addKeyValue("event", "model_http_error")
           .addKeyValue("upstream_status", exception.getStatusCode().value())
+          .setCause(exception)
           .log("Model service returned an HTTP error");
 
       throw new ApiException(HttpStatus.BAD_GATEWAY, "Model service returned an error.");
@@ -78,6 +80,7 @@ public final class HttpModelPredictionClient implements ModelPredictionClient {
           .atWarn()
           .addKeyValue("event", "model_connection_error")
           .addKeyValue("error_type", exception.getClass().getSimpleName())
+          .setCause(exception)
           .log("Model service is unavailable");
 
       throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Model service is unavailable.");
@@ -86,6 +89,7 @@ public final class HttpModelPredictionClient implements ModelPredictionClient {
         LOGGER
             .atWarn()
             .addKeyValue("event", "model_response_timeout")
+            .setCause(exception)
             .log("Model service response timed out");
 
         throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Model service is unavailable.");
@@ -95,6 +99,7 @@ public final class HttpModelPredictionClient implements ModelPredictionClient {
           .atWarn()
           .addKeyValue("event", "model_response_unreadable")
           .addKeyValue("error_type", exception.getClass().getSimpleName())
+          .setCause(exception)
           .log("Model service response could not be read");
 
       throw invalidResponse();

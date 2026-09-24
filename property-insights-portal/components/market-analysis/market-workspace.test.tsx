@@ -19,7 +19,11 @@ afterEach(() => {
   window.history.replaceState(null, "", "/market-analysis");
 });
 
-function property(id: number, price: number): PropertyRecord {
+function property(
+  id: number,
+  price: number,
+  overrides: Partial<PropertyRecord> = {},
+): PropertyRecord {
   return {
     id,
     square_footage: 1500 + id,
@@ -30,6 +34,7 @@ function property(id: number, price: number): PropertyRecord {
     distance_to_city_center: 4,
     school_rating: 7,
     price,
+    ...overrides,
   };
 }
 
@@ -239,6 +244,66 @@ test("scenario application updates only the prediction request boundary", async 
     screen.queryByRole("heading", { name: "What-if impact" }),
   ).not.toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+test("does not request predictions for an out-of-range scenario restored from the URL", async () => {
+  const fetchMock = vi.spyOn(globalThis, "fetch");
+
+  render(
+    <MarketWorkspace
+      data={dashboard()}
+      filters={{}}
+      scenario={{ schoolRatingDelta: -19 }}
+      dimension="square_footage"
+    />,
+  );
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "This adjustment would put 2 properties outside the allowed school rating range.",
+  );
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test("validates adjustments against properties in the current segment only", async () => {
+  const fetchMock = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(Response.json(impactResponse()));
+  const data = dashboard([
+    property(1, 200000, { school_rating: 7 }),
+    property(2, 250000, { school_rating: 8 }),
+  ]);
+  data.summary.matched_count = 1;
+  data.priceDistribution = {
+    ...data.priceDistribution,
+    matched_count: 1,
+    buckets: data.priceDistribution.buckets.map((bucket) => ({
+      ...bucket,
+      count: 1,
+    })),
+  };
+  data.featureDistribution = {
+    ...data.featureDistribution,
+    matched_count: 1,
+    buckets: data.featureDistribution.buckets.map((bucket) => ({
+      ...bucket,
+      count: 1,
+    })),
+  };
+
+  render(
+    <MarketWorkspace
+      data={data}
+      filters={{ min_school_rating: 8 }}
+      scenario={{ schoolRatingDelta: -8 }}
+      dimension="square_footage"
+    />,
+  );
+
+  expect(
+    await screen.findByText("Predicted baseline: 100"),
+  ).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
 
 test("restores combined URL conditions and follows later history URL changes", async () => {

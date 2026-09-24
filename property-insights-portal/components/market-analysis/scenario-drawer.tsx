@@ -11,6 +11,11 @@ import {
   type MarketField,
   type SegmentFilters,
 } from "@/lib/market-analysis/fields";
+import type { PropertyRecord } from "@/lib/market-analysis/schemas";
+import {
+  type ScenarioField,
+  validateScenario,
+} from "@/lib/market-analysis/scenario-validation";
 import { SideDrawer } from "./side-drawer";
 
 type Props = {
@@ -18,12 +23,12 @@ type Props = {
   scenario?: MarketScenario;
   dimension: FeatureDimension;
   propertyCount: number;
+  properties: readonly PropertyRecord[];
   segmentReady?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 };
 
-type ScenarioField = keyof MarketScenario;
 type ScenarioFieldDefinition = {
   key: ScenarioField;
   label: string;
@@ -136,6 +141,20 @@ function scenarioFromDraft(draft: Draft): MarketScenario | undefined {
   return Object.keys(scenario).length === 0 ? undefined : scenario;
 }
 
+function draftInputError(
+  value: string,
+  key: ScenarioField,
+): string | undefined {
+  const raw = value.trim();
+  if (raw === "") return undefined;
+  const numericValue = Number(raw);
+  if (!Number.isFinite(numericValue)) return "Enter a finite number.";
+  if (integerScenarioFields.has(key) && !Number.isInteger(numericValue)) {
+    return "Enter a whole number.";
+  }
+  return undefined;
+}
+
 export function ScenarioDrawer(props: Props) {
   return <ScenarioDrawerState {...props} />;
 }
@@ -145,6 +164,7 @@ function ScenarioDrawerState({
   scenario,
   dimension,
   propertyCount,
+  properties,
   segmentReady = true,
   open: controlledOpen,
   onOpenChange,
@@ -176,16 +196,16 @@ function ScenarioDrawerState({
     internalOpenState.key === appliedKey && internalOpenState.value;
   const open = controlledOpen ?? internalOpen;
   const currentCount = adjustmentCount(scenario);
-  const hasInvalidDraft = scenarioFields.some(({ key }) => {
-    const raw = draft[key].trim();
-    const value = Number(raw);
-    return (
-      raw !== "" &&
-      (!Number.isFinite(value) ||
-        (integerScenarioFields.has(key) && !Number.isInteger(value)))
-    );
-  });
+  const inputErrors = Object.fromEntries(
+    scenarioFields.flatMap(({ key }) => {
+      const fieldError = draftInputError(draft[key], key);
+      return fieldError ? [[key, fieldError]] : [];
+    }),
+  ) as Partial<Record<ScenarioField, string>>;
+  const hasInvalidDraft = Object.keys(inputErrors).length > 0;
   const hasEffectiveDraft = scenarioFromDraft(draft) !== undefined;
+  const rangeErrors = validateScenario(scenarioFromDraft(draft), properties);
+  const hasOutOfRangeAdjustment = Object.keys(rangeErrors).length > 0;
 
   function updateDraft(next: Draft | ((current: Draft) => Draft)) {
     const current =
@@ -239,6 +259,7 @@ function ScenarioDrawerState({
       setError("Enter at least one non-zero scenario adjustment.");
       return;
     }
+    if (hasOutOfRangeAdjustment) return;
     setError(null);
     commit(nextScenario);
   }
@@ -335,30 +356,46 @@ function ScenarioDrawerState({
           ) : null}
           <form className="space-y-5" onSubmit={apply}>
             <div className="space-y-4">
-              {scenarioFields.map(({ key, label, step, autofocus }) => (
-                <label
-                  className="block text-sm font-medium text-slate-700"
-                  key={key}
-                >
-                  {label}
-                  <input
-                    aria-label={label}
-                    className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
-                    data-drawer-autofocus={autofocus ? "true" : undefined}
-                    inputMode={step === "1" ? "numeric" : "decimal"}
-                    onChange={(event) => {
-                      const value = event.currentTarget.value;
-                      updateDraft((current) => ({
-                        ...current,
-                        [key]: value,
-                      }));
-                    }}
-                    step={step}
-                    type="number"
-                    value={draft[key]}
-                  />
-                </label>
-              ))}
+              {scenarioFields.map(({ key, label, step, autofocus }) => {
+                const fieldError =
+                  inputErrors[key] ?? rangeErrors[key]?.message;
+                const errorId = `${key}-error`;
+                return (
+                  <label
+                    className="block text-sm font-medium text-slate-700"
+                    key={key}
+                  >
+                    {label}
+                    <input
+                      aria-describedby={fieldError ? errorId : undefined}
+                      aria-invalid={fieldError ? "true" : undefined}
+                      aria-label={label}
+                      className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                      data-drawer-autofocus={autofocus ? "true" : undefined}
+                      inputMode={step === "1" ? "numeric" : "decimal"}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value;
+                        updateDraft((current) => ({
+                          ...current,
+                          [key]: value,
+                        }));
+                      }}
+                      step={step}
+                      type="number"
+                      value={draft[key]}
+                    />
+                    {fieldError ? (
+                      <span
+                        className="mt-1 block text-sm font-normal text-red-800"
+                        id={errorId}
+                        role="alert"
+                      >
+                        {fieldError}
+                      </span>
+                    ) : null}
+                  </label>
+                );
+              })}
               <p className="text-sm text-slate-600">Blank means no change.</p>
             </div>
             {error ? (
@@ -389,6 +426,7 @@ function ScenarioDrawerState({
                     !segmentReady ||
                     propertyCount === 0 ||
                     hasInvalidDraft ||
+                    hasOutOfRangeAdjustment ||
                     !hasEffectiveDraft
                   }
                   type="submit"
