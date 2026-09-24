@@ -17,7 +17,6 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
-import org.springframework.web.servlet.View;
 
 @Component
 public final class HttpModelPredictionClient implements ModelPredictionClient {

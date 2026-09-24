@@ -1,10 +1,15 @@
 "use client";
 
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
-import { estimateHistorySchema } from "@/lib/property-schema";
+import {
+  estimateHistoryStateSchema,
+  legacyEstimateHistorySchema,
+} from "@/lib/property-schema";
+import { MAX_COMPARISON_ESTIMATES } from "@/lib/estimate-constants";
 import type { EstimateRecord, EstimateResponse } from "@/lib/types";
 
-const storageKey = "property-estimates:v1";
+const legacyStorageKey = "property-estimates:v1";
+const storageKey = "property-estimates:v2";
 const historyChangeEvent = "property-estimates-change";
 
 function getClientSnapshot() {
@@ -13,9 +18,14 @@ function getClientSnapshot() {
   }
 
   try {
-    return window.localStorage.getItem(storageKey) ?? "";
+    const current = window.localStorage.getItem(storageKey);
+    if (current !== null) {
+      return `v2:${current}`;
+    }
+
+    return `v1:${window.localStorage.getItem(legacyStorageKey) ?? ""}`;
   } catch {
-    return "";
+    return "v2:";
   }
 }
 
@@ -33,33 +43,69 @@ function subscribe(onStoreChange: () => void) {
   };
 }
 
-function parseHistory(raw: string | null) {
-  if (!raw) {
-    return [];
+type EstimateHistoryState = {
+  next_number: number;
+  records: EstimateRecord[];
+};
+
+function emptyHistory(): EstimateHistoryState {
+  return { next_number: 1, records: [] };
+}
+
+function parseHistory(snapshot: string | null): EstimateHistoryState {
+  if (!snapshot) {
+    return emptyHistory();
   }
 
   try {
-    const parsed = estimateHistorySchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : [];
+    const separator = snapshot.indexOf(":");
+    const version = snapshot.slice(0, separator);
+    const raw = snapshot.slice(separator + 1);
+    const data = JSON.parse(raw);
+
+    if (version === "v2") {
+      const parsed = estimateHistoryStateSchema.safeParse(data);
+      return parsed.success ? parsed.data : emptyHistory();
+    }
+
+    if (version === "v1") {
+      const parsed = legacyEstimateHistorySchema.safeParse(data);
+      if (!parsed.success) {
+        return emptyHistory();
+      }
+
+      const records = parsed.data.map((record, index) => ({
+        ...record,
+        display_number: parsed.data.length - index,
+      }));
+
+      return { next_number: records.length + 1, records };
+    }
+
+    return emptyHistory();
   } catch {
-    return [];
+    return emptyHistory();
   }
 }
 
-function readHistoryFromStorage() {
+function readHistoryStateFromStorage() {
   return parseHistory(getClientSnapshot());
 }
 
-function writeHistory(history: EstimateRecord[]) {
-  window.localStorage.setItem(storageKey, JSON.stringify(history));
+function writeHistoryState(state: EstimateHistoryState) {
+  window.localStorage.setItem(storageKey, JSON.stringify(state));
   window.dispatchEvent(new Event(historyChangeEvent));
 }
 
-function createEstimateRecord(estimate: EstimateResponse): EstimateRecord {
+function createEstimateRecord(
+  estimate: EstimateResponse,
+  display_number: number,
+): EstimateRecord {
   return {
     ...estimate,
     id: crypto.randomUUID(),
     created_at: new Date().toISOString(),
+    display_number,
   };
 }
 
@@ -69,56 +115,102 @@ export function useEstimateHistory() {
     getClientSnapshot,
     getServerSnapshot,
   );
-  const history = useMemo(() => parseHistory(rawHistory), [rawHistory]);
+  const historyState = useMemo(() => parseHistory(rawHistory), [rawHistory]);
+  const history = historyState.records;
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const historyIds = useMemo(
+    () => new Set(history.map((record) => record.id)),
+    [history],
+  );
+  const visibleSelectedIds = useMemo(
+    () => selectedIds.filter((id) => historyIds.has(id)),
+    [historyIds, selectedIds],
+  );
   const isHydrated = rawHistory !== null;
 
   const addEstimate = useCallback((estimate: EstimateResponse) => {
-    const record = createEstimateRecord(estimate);
+    const current = readHistoryStateFromStorage();
+    const record = createEstimateRecord(estimate, current.next_number);
 
-    writeHistory([record, ...readHistoryFromStorage()]);
+    writeHistoryState({
+      next_number: current.next_number + 1,
+      records: [record, ...current.records],
+    });
+
+    return record;
   }, []);
 
   const addEstimates = useCallback((estimates: EstimateResponse[]) => {
-    const records = estimates.map(createEstimateRecord);
+    const current = readHistoryStateFromStorage();
+    const records = estimates.map((estimate, index) =>
+      createEstimateRecord(estimate, current.next_number + index),
+    );
 
-    writeHistory([...records, ...readHistoryFromStorage()]);
-    setSelectedIds(records.map((record) => record.id));
+    writeHistoryState({
+      next_number: current.next_number + records.length,
+      records: [...records, ...current.records],
+    });
+
+    return records;
   }, []);
 
   const removeEstimate = useCallback((id: string) => {
-    writeHistory(readHistoryFromStorage().filter((record) => record.id !== id));
+    const current = readHistoryStateFromStorage();
+    writeHistoryState({
+      ...current,
+      records: current.records.filter((record) => record.id !== id),
+    });
     setSelectedIds((current) =>
       current.filter((selectedId) => selectedId !== id),
     );
   }, []);
 
   const clearHistory = useCallback(() => {
-    writeHistory([]);
+    const current = readHistoryStateFromStorage();
+    writeHistoryState({ ...current, records: [] });
     setSelectedIds([]);
   }, []);
 
-  const toggleSelected = useCallback((id: string) => {
-    setSelectedIds((current) =>
-      current.includes(id)
-        ? current.filter((selectedId) => selectedId !== id)
-        : [...current, id],
-    );
-  }, []);
+  const toggleSelected = useCallback(
+    (id: string) => {
+      if (!historyIds.has(id)) {
+        return;
+      }
+
+      setSelectedIds((current) => {
+        const validSelection = current.filter((selectedId) =>
+          historyIds.has(selectedId),
+        );
+        if (validSelection.includes(id)) {
+          return validSelection.filter((selectedId) => selectedId !== id);
+        }
+
+        if (validSelection.length >= MAX_COMPARISON_ESTIMATES) {
+          return validSelection;
+        }
+
+        return [...validSelection, id];
+      });
+    },
+    [historyIds],
+  );
+
+  const clearSelection = useCallback(() => setSelectedIds([]), []);
 
   const selectedRecords = useMemo(
     () =>
-      selectedIds.flatMap(
+      visibleSelectedIds.flatMap(
         (id) => history.find((record) => record.id === id) ?? [],
       ),
-    [history, selectedIds],
+    [history, visibleSelectedIds],
   );
 
   return {
     history,
     isHydrated,
-    selectedIds,
+    selectedIds: visibleSelectedIds,
     selectedRecords,
+    clearSelection,
     addEstimate,
     addEstimates,
     removeEstimate,

@@ -118,7 +118,9 @@ test("maps a server validation error to the indexed batch property field", async
 });
 
 test("returns a valid estimate to its parent", async () => {
-  vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json(estimate));
+  const fetchMock = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(Response.json(estimate));
 
   const onSuccessAction = vi.fn();
   const user = userEvent.setup();
@@ -130,6 +132,10 @@ test("returns a valid estimate to its parent", async () => {
   await waitFor(() => {
     expect(onSuccessAction).toHaveBeenCalledWith(estimate);
   });
+
+  expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual(
+    estimate.property,
+  );
 });
 
 test("submits and returns a batch of properties", async () => {
@@ -201,6 +207,7 @@ test("uses explicit property field names in the editor columns", () => {
     "School rating",
     "Actions",
   ]);
+  expect(screen.getByLabelText("Square footage")).toBeInTheDocument();
 });
 
 test("preserves batch semantics when the batch contains one property", async () => {
@@ -217,9 +224,7 @@ test("preserves batch semantics when the batch contains one property", async () 
   render(<EstimateForm onSuccessAction={onSuccessAction} />);
 
   await user.click(screen.getByRole("radio", { name: /batch/i }));
-  await user.click(
-    screen.getByRole("button", { name: /estimate 1 properties/i }),
-  );
+  await user.click(screen.getByRole("button", { name: "Estimate 1 property" }));
 
   await waitFor(() => {
     expect(onSuccessAction).toHaveBeenCalledWith(batchEstimate);
@@ -245,7 +250,7 @@ test("removes a property from a batch", async () => {
     screen.queryByRole("row", { name: /property 2/i }),
   ).not.toBeInTheDocument();
   expect(
-    screen.getByRole("button", { name: /estimate 1 properties/i }),
+    screen.getByRole("button", { name: "Estimate 1 property" }),
   ).toBeInTheDocument();
 });
 
@@ -263,6 +268,62 @@ test("limits a batch to twenty properties", async () => {
 
   expect(addButton).toBeDisabled();
   expect(screen.getByRole("row", { name: /property 20/i })).toBeInTheDocument();
+});
+
+test("blocks an invalid indexed Batch property before fetch", async () => {
+  const fetchMock = vi.spyOn(globalThis, "fetch");
+  const user = userEvent.setup();
+
+  render(<EstimateForm onSuccessAction={vi.fn()} />);
+
+  await user.click(screen.getByRole("radio", { name: /batch/i }));
+  await user.click(screen.getByRole("button", { name: /add property/i }));
+  const secondBedrooms = document.getElementById(
+    "bedrooms-1",
+  ) as HTMLInputElement;
+  await user.clear(secondBedrooms);
+  await user.type(secondBedrooms, "11");
+  await user.click(
+    screen.getByRole("button", { name: /estimate 2 properties/i }),
+  );
+
+  expect(await screen.findByText(/too big/i)).toBeInTheDocument();
+  expect(secondBedrooms).toHaveAttribute("aria-invalid", "true");
+  expect(secondBedrooms).toHaveAttribute(
+    "aria-describedby",
+    "bedrooms-1-error",
+  );
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test("shows a clear message when the estimate service is unavailable", async () => {
+  vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+  const user = userEvent.setup();
+
+  render(<EstimateForm onSuccessAction={vi.fn()} />);
+  await user.click(screen.getByRole("button", { name: /estimate value/i }));
+
+  expect(
+    await screen.findByText(
+      "The estimate service is unavailable. Please try again.",
+    ),
+  ).toBeInTheDocument();
+});
+
+test("rejects an invalid response with a clear message", async () => {
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    Response.json({ property: {}, predicted_price: "unknown" }),
+  );
+  const onSuccessAction = vi.fn();
+  const user = userEvent.setup();
+
+  render(<EstimateForm onSuccessAction={onSuccessAction} />);
+  await user.click(screen.getByRole("button", { name: /estimate value/i }));
+
+  expect(
+    await screen.findByText("The estimate response was invalid."),
+  ).toBeInTheDocument();
+  expect(onSuccessAction).not.toHaveBeenCalled();
 });
 
 test("disables submission while a request is pending", async () => {

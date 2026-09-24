@@ -8,10 +8,9 @@ import {
   estimateErrorSchema,
   type ValidationIssue,
 } from "@/lib/api-error-schema";
+import { MAX_BATCH_SIZE } from "@/lib/estimate-constants";
 import { estimateResultSchema, propertySchema } from "@/lib/property-schema";
 import type { EstimateResult, PropertyFeatures } from "@/lib/types";
-
-const batchEstimateLimit = 20;
 
 const defaults: PropertyFeatures = {
   square_footage: 1550,
@@ -111,7 +110,7 @@ function mapServerFieldErrors(issues: ValidationIssue[]) {
 }
 
 const estimateFormSchema = z.object({
-  properties: z.array(propertySchema).min(1).max(batchEstimateLimit),
+  properties: z.array(propertySchema).min(1).max(MAX_BATCH_SIZE),
 });
 
 type EstimateFormValues = z.infer<typeof estimateFormSchema>;
@@ -239,9 +238,7 @@ export function EstimateForm({
           {mode === "batch" ? (
             <button
               className="rounded-lg border border-blue-700 px-4 py-2 font-semibold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-400 disabled:text-slate-400"
-              disabled={
-                isSubmitting || propertyFields.length >= batchEstimateLimit
-              }
+              disabled={isSubmitting || propertyFields.length >= MAX_BATCH_SIZE}
               onClick={() => append({ ...defaults })}
               type="button"
             >
@@ -257,7 +254,7 @@ export function EstimateForm({
             {isSubmitting
               ? "Estimating…"
               : mode === "batch"
-                ? `Estimate ${propertyFields.length} properties`
+                ? `Estimate ${propertyFields.length} ${propertyFields.length === 1 ? "property" : "properties"}`
                 : "Estimate value"}
           </button>
         </div>

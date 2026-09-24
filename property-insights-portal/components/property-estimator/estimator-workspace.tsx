@@ -1,72 +1,99 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useEstimateHistory } from "@/hooks/use-estimate-history";
-import type { EstimateResult } from "@/lib/types";
-import { EstimateChart } from "./estimate-chart";
+import {
+  MAX_COMPARISON_ESTIMATES,
+  MIN_COMPARISON_ESTIMATES,
+} from "@/lib/estimate-constants";
+import type { EstimateRecord, EstimateResult } from "@/lib/types";
+import { ComparisonView } from "./comparison-view";
 import { EstimateForm } from "./estimate-form";
 import { EstimateHistory } from "./estimate-history";
-import { EstimateResultView } from "./estimate-result";
+import { PredictionResults } from "./prediction-results";
+
+type LatestResult = {
+  mode: "single" | "batch";
+  estimates: EstimateRecord[];
+};
 
 export function EstimatorWorkspace() {
-  const [latest, setLatest] = useState<EstimateResult | null>(null);
+  const [latestResult, setLatestResult] = useState<LatestResult | null>(null);
+  const [comparisonIds, setComparisonIds] = useState<string[]>([]);
+  const [compareVersion, setCompareVersion] = useState(0);
   const historyState = useEstimateHistory();
 
-  function handleSuccess(result: EstimateResult) {
-    setLatest(result);
+  const comparisonRecords = comparisonIds.flatMap(
+    (id) => historyState.history.find((record) => record.id === id) ?? [],
+  );
 
-    if ("estimates" in result) {
-      historyState.addEstimates(result.estimates);
-    } else {
-      historyState.addEstimate(result);
+  useEffect(() => {
+    if (compareVersion === 0) {
+      return;
     }
+
+    const comparison = document.getElementById("estimate-comparison");
+    if (!comparison) {
+      return;
+    }
+
+    comparison.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    comparison.focus({ preventScroll: true });
+  }, [compareVersion]);
+
+  function handleSuccess(result: EstimateResult) {
+    if ("estimates" in result) {
+      const estimates = historyState.addEstimates(result.estimates);
+      setLatestResult({ mode: "batch", estimates });
+      return;
+    }
+
+    const estimate = historyState.addEstimate(result);
+    setLatestResult({ mode: "single", estimates: [estimate] });
   }
 
-  const chartRecords =
-    historyState.selectedRecords.length > 0
-      ? historyState.selectedRecords
-      : historyState.history.slice(0, 1);
+  function handleCompare() {
+    const selectedIds = historyState.selectedIds;
+    if (
+      selectedIds.length < MIN_COMPARISON_ESTIMATES ||
+      selectedIds.length > MAX_COMPARISON_ESTIMATES
+    ) {
+      return;
+    }
+
+    setComparisonIds([...selectedIds]);
+    setCompareVersion((current) => current + 1);
+  }
 
   return (
     <div className="space-y-10">
-      <div className="space-y-8">
-        <EstimateForm onSuccessAction={handleSuccess} />
+      <EstimateForm onSuccessAction={handleSuccess} />
 
-        <div aria-live="polite">
-          {latest && "estimates" in latest ? (
-            <section
-              aria-labelledby="latest-batch"
-              className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6"
-            >
-              <h2 className="text-xl font-semibold" id="latest-batch">
-                Latest batch
-              </h2>
-              <p className="mt-2 text-emerald-900">
-                {latest.count} {latest.count === 1 ? "estimate" : "estimates"}{" "}
-                completed and added to the comparison.
-              </p>
-            </section>
-          ) : latest ? (
-            <EstimateResultView estimate={latest} />
-          ) : (
-            <p className="rounded-2xl border border-dashed border-slate-300 p-6 text-slate-600">
-              Submit the form to see an estimate.
-            </p>
-          )}
-        </div>
-      </div>
+      {latestResult ? (
+        <PredictionResults
+          estimates={latestResult.estimates}
+          mode={latestResult.mode}
+        />
+      ) : (
+        <p className="rounded-2xl border border-dashed border-slate-300 p-6 text-slate-600">
+          Submit the form to see an estimate.
+        </p>
+      )}
 
       {historyState.isHydrated ? (
         <>
-          <EstimateChart records={chartRecords} />
-
           <EstimateHistory
             history={historyState.history}
             onClear={historyState.clearHistory}
+            onClearSelection={historyState.clearSelection}
+            onCompare={handleCompare}
             onRemove={historyState.removeEstimate}
             onToggle={historyState.toggleSelected}
             selectedIds={historyState.selectedIds}
           />
+          {comparisonRecords.length >= MIN_COMPARISON_ESTIMATES ? (
+            <ComparisonView estimates={comparisonRecords} />
+          ) : null}
         </>
       ) : (
         <p className="text-slate-600">Loading estimate history…</p>

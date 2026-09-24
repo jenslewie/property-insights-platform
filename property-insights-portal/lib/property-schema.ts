@@ -35,9 +35,27 @@ export const estimateResultSchema = z.union([
   batchEstimateResponseSchema,
 ]);
 
-export const estimateRecordSchema = estimateResponseSchema.extend({
+export const legacyEstimateRecordSchema = estimateResponseSchema.extend({
   id: z.string().min(1),
   created_at: z.iso.datetime(),
 });
 
-export const estimateHistorySchema = z.array(estimateRecordSchema);
+export const legacyEstimateHistorySchema = z.array(legacyEstimateRecordSchema);
+
+export const estimateRecordSchema = legacyEstimateRecordSchema.extend({
+  display_number: z.number().int().positive(),
+});
+
+export const estimateHistoryStateSchema = z
+  .object({
+    next_number: z.number().int().positive(),
+    records: z.array(estimateRecordSchema),
+  })
+  .strict()
+  .refine(
+    ({ next_number, records }) =>
+      records.every((record) => record.display_number < next_number),
+    {
+      message: "Next estimate number must exceed every saved estimate number.",
+    },
+  );
