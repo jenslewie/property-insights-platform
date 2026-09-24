@@ -61,7 +61,7 @@ class ExportServiceTest {
   }
 
   @Test
-  void preparesReportWithAllSourceRowsDistributionsAndFixedTimestamp() {
+  void preparesReportWithAggregatesAndFixedTimestamp() {
     ReportData report = service.report(filter("min_price", "350000"));
 
     assertThat(report.summary().matchedCount()).isEqualTo(12);
@@ -69,12 +69,16 @@ class ExportServiceTest {
     assertThat(report.distributions()).containsOnlyKeys(DistributionDimension.values());
     assertThat(report.distributions().values())
         .allSatisfy(distribution -> assertThat(distribution.matchedCount()).isEqualTo(12));
-    assertThat(report.properties())
-        .extracting(row -> row.id())
-        .containsExactly(7L, 9L, 13L, 15L, 19L, 22L, 26L, 34L, 37L, 39L, 43L, 49L);
     assertThat(report.scenario()).isNull();
     assertThat(report.priceImpact()).isNull();
     assertThat(modelCalls).isEmpty();
+    assertThat(service.properties(filter("min_price", "350000")))
+        .extracting(row -> row.id())
+        .containsExactly(7L, 9L, 13L, 15L, 19L, 22L, 26L, 34L, 37L, 39L, 43L, 49L);
+    assertThat(
+            java.util.Arrays.stream(ReportData.class.getRecordComponents())
+                .map(java.lang.reflect.RecordComponent::getName))
+        .doesNotContain("properties");
   }
 
   @Test

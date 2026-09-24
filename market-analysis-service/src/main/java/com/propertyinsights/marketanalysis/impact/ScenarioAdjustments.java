@@ -111,7 +111,9 @@ public record ScenarioAdjustments(
   }
 
   private static int adjustedInteger(int baseline, BigDecimal delta) {
-    if (delta == null) return baseline;
+    if (delta == null) {
+      return baseline;
+    }
     try {
       return Math.addExact(baseline, delta.intValueExact());
     } catch (ArithmeticException exception) {

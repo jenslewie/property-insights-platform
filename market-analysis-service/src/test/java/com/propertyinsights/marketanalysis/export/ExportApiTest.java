@@ -66,7 +66,7 @@ class ExportApiTest {
   }
 
   @Test
-  void csvAndPdfShareFilenameAndEveryFilteredSourceRow() throws Exception {
+  void csvKeepsFilteredRowsWhilePdfProvidesAggregateScenarioReport() throws Exception {
     String csvFilename =
         downloadCsv(
             get(EXPORT_PATH)
@@ -110,24 +110,38 @@ class ExportApiTest {
 
     assertThat(new String(pdf, 0, 4, StandardCharsets.US_ASCII)).isEqualTo("%PDF");
     List<Long> csvIds = csvIds(csv);
+    assertThat(csvIds).containsExactly(7L, 9L, 13L, 15L, 19L, 22L, 26L, 34L, 37L, 39L, 43L, 49L);
+    try (CSVParser parser = CSVParser.parse(csv, CSVFormat.DEFAULT)) {
+      assertThat(parser.getRecords())
+          .hasSize(13)
+          .allSatisfy(record -> assertThat(record).hasSize(9));
+    }
     try (PDDocument document = Loader.loadPDF(pdf)) {
-      assertThat(document.getNumberOfPages()).isGreaterThan(1);
+      assertThat(document.getNumberOfPages()).isEqualTo(3);
       String text = new PDFTextStripper().getText(document);
       assertThat(text)
           .contains(
-              "Historical price summary",
-              "Predicted baseline and scenario",
-              "school_rating_delta: 0.5",
-              "square_footage_percent: 5",
-              "bedrooms_delta: 1",
-              "bathrooms_delta: 0.5",
-              "year_built_delta: 5",
-              "lot_size_delta: 500",
-              "distance_to_city_center_delta: 0.5",
-              GENERATED_AT.toString());
-      for (Long id : csvIds) {
-        assertThat(text).contains("Property ID: " + id);
-      }
+              "Property Market Analysis",
+              "MATCHED PROPERTIES",
+              "Price distribution",
+              "Square footage",
+              "Bedrooms",
+              "Bathrooms",
+              "Year built",
+              "Lot size",
+              "Distance to city center",
+              "School rating",
+              "Predicted baseline",
+              "Square footage: +5%",
+              "Bedrooms: +1",
+              "Bathrooms: +0.5",
+              "Year built: +5",
+              "Lot size: +500",
+              "Distance to city center: +0.5",
+              "School rating: +0.5",
+              "Selected properties: 12",
+              GENERATED_AT.toString())
+          .doesNotContain("Property ID:", "square_footage", "key=", "range=", "historical_price=");
     }
     verify(predictionClient, times(2)).predict(anyList());
   }
@@ -151,14 +165,31 @@ class ExportApiTest {
 
     assertThat(second).isEqualTo(first);
 
-    String changed =
+    String firstPdf =
+        downloadPdfFilename(
+            get(EXPORT_PATH)
+                .param("format", "pdf")
+                .param("min_price", "350000")
+                .param("max_bedrooms", "4")
+                .param("scenario_school_rating_delta", "1.00"));
+    String equivalentPdf =
+        downloadPdfFilename(
+            get(EXPORT_PATH)
+                .param("scenario_school_rating_delta", "1.0")
+                .param("max_bedrooms", "4.0")
+                .param("format", "pdf")
+                .param("min_price", "350000.0"));
+    assertThat(firstPdf).isEqualTo(first.replace(".csv", ".pdf"));
+    assertThat(equivalentPdf).isEqualTo(firstPdf);
+
+    String changedScenario =
         downloadCsv(
             get(EXPORT_PATH)
                 .param("format", "csv")
-                .param("min_price", "350001")
+                .param("min_price", "350000")
                 .param("max_bedrooms", "4")
-                .param("scenario_school_rating_delta", "1"));
-    assertThat(changed).isNotEqualTo(first);
+                .param("scenario_school_rating_delta", "0.5"));
+    assertThat(changedScenario).isNotEqualTo(first);
   }
 
   @Test
@@ -218,6 +249,19 @@ class ExportApiTest {
   }
 
   private String lastCsv;
+
+  private String downloadPdfFilename(
+      org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder builder)
+      throws Exception {
+    MvcResult started = mockMvc.perform(builder).andExpect(request().asyncStarted()).andReturn();
+    return mockMvc
+        .perform(asyncDispatch(started))
+        .andExpect(status().isOk())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF))
+        .andReturn()
+        .getResponse()
+        .getHeader("Content-Disposition");
+  }
 
   private String downloadCsv(
       org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder builder)

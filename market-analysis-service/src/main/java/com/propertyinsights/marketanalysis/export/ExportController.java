@@ -206,7 +206,9 @@ public final class ExportController {
     scenarioValues.forEach(
         (queryParameter, value) -> {
           String field = SCENARIO_FIELDS.get(queryParameter);
-          if (value != null) adjustmentNode.put(field, value);
+          if (value != null) {
+            adjustmentNode.put(field, value);
+          }
         });
 
     if (adjustmentNode.isEmpty()) {

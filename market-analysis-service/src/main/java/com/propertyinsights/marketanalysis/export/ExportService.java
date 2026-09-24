@@ -59,7 +59,7 @@ public final class ExportService {
   }
 
   public ReportData report(SegmentFilter filter, ScenarioAdjustments scenario) {
-    List<PropertyRecord> rows = properties(filter, scenario);
+    properties(filter, scenario);
     MarketSummary summary = analysisService.summary(filter);
 
     Map<DistributionDimension, DistributionResponse> distributions =
@@ -70,8 +70,7 @@ public final class ExportService {
 
     PriceImpactResponse priceImpact =
         scenario == null ? null : priceImpactService.compare(filter, scenario);
-    return new ReportData(
-        filter, summary, distributions, rows, scenario, priceImpact, clock.instant());
+    return new ReportData(filter, summary, distributions, scenario, priceImpact, clock.instant());
   }
 
   private void validateScenario(List<PropertyRecord> rows, ScenarioAdjustments scenario) {
