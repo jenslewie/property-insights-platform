@@ -14,56 +14,56 @@ import org.springframework.util.LinkedMultiValueMap;
 @SpringBootTest
 class MarketCacheTest {
 
-    @Autowired private MarketAnalysisService service;
+  @Autowired private MarketAnalysisService service;
 
-    @Autowired private SegmentFilterParser parser;
+  @Autowired private SegmentFilterParser parser;
 
-    @Autowired private CacheManager cacheManager;
+  @Autowired private CacheManager cacheManager;
 
-    private Cache<Object, Object> nativeCache;
+  private Cache<Object, Object> nativeCache;
 
-    @BeforeEach
-    void clearCache() {
-        CaffeineCache cache = (CaffeineCache) cacheManager.getCache("marketStats");
-        nativeCache = cache.getNativeCache();
-        nativeCache.invalidateAll();
-    }
+  @BeforeEach
+  void clearCache() {
+    CaffeineCache cache = (CaffeineCache) cacheManager.getCache("marketStats");
+    nativeCache = cache.getNativeCache();
+    nativeCache.invalidateAll();
+  }
 
-    @Test
-    void equivalentNumericFiltersUseTheSameCachedSummary() {
-        var firstParams = new LinkedMultiValueMap<String, String>();
-        firstParams.add("min_price", "200000.0");
+  @Test
+  void equivalentNumericFiltersUseTheSameCachedSummary() {
+    var firstParams = new LinkedMultiValueMap<String, String>();
+    firstParams.add("min_price", "200000.0");
 
-        var secondParams = new LinkedMultiValueMap<String, String>();
-        secondParams.add("min_price", "200000");
+    var secondParams = new LinkedMultiValueMap<String, String>();
+    secondParams.add("min_price", "200000");
 
-        MarketSummary first = service.summary(parser.parse(firstParams));
-        MarketSummary second = service.summary(parser.parse(secondParams));
+    MarketSummary first = service.summary(parser.parse(firstParams));
+    MarketSummary second = service.summary(parser.parse(secondParams));
 
-        assertThat(second).isSameAs(first);
-        assertThat(nativeCache.asMap()).hasSize(1);
-    }
+    assertThat(second).isSameAs(first);
+    assertThat(nativeCache.asMap()).hasSize(1);
+  }
 
-    @Test
-    void cacheHasMaximumSizeAndNoTimeExpiration() {
-        assertThat(cacheManager.getCacheNames()).containsExactly("marketStats");
+  @Test
+  void cacheHasMaximumSizeAndNoTimeExpiration() {
+    assertThat(cacheManager.getCacheNames()).containsExactly("marketStats");
 
-        var eviction = nativeCache.policy().eviction().orElseThrow();
-        assertThat(eviction.getMaximum()).isEqualTo(500L);
-        assertThat(nativeCache.policy().expireAfterWrite()).isEmpty();
-        assertThat(nativeCache.policy().expireAfterAccess()).isEmpty();
-    }
+    var eviction = nativeCache.policy().eviction().orElseThrow();
+    assertThat(eviction.getMaximum()).isEqualTo(500L);
+    assertThat(nativeCache.policy().expireAfterWrite()).isEmpty();
+    assertThat(nativeCache.policy().expireAfterAccess()).isEmpty();
+  }
 
-    @Test
-    void distributionsUseDifferentKeysForDifferentDimensions() {
-        SegmentFilter filter = SegmentFilter.unrestricted();
+  @Test
+  void distributionsUseDifferentKeysForDifferentDimensions() {
+    SegmentFilter filter = SegmentFilter.unrestricted();
 
-        service.distribution(filter, DistributionDimension.PRICE);
-        service.distribution(filter, DistributionDimension.BEDROOMS);
+    service.distribution(filter, DistributionDimension.PRICE);
+    service.distribution(filter, DistributionDimension.BEDROOMS);
 
-        assertThat(nativeCache.asMap().keySet())
-                .containsExactlyInAnyOrder(
-                        "distribution:PRICE:" + filter.cacheKey(),
-                        "distribution:BEDROOMS:" + filter.cacheKey());
-    }
+    assertThat(nativeCache.asMap().keySet())
+        .containsExactlyInAnyOrder(
+            "distribution:PRICE:" + filter.cacheKey(),
+            "distribution:BEDROOMS:" + filter.cacheKey());
+  }
 }

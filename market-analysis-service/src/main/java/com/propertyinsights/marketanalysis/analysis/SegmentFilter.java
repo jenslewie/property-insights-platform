@@ -9,103 +9,103 @@ import java.util.Map;
 
 public final class SegmentFilter {
 
-    static final List<String> FIELD_ORDER =
-            List.of(
-                    "square_footage",
-                    "bedrooms",
-                    "bathrooms",
-                    "year_built",
-                    "lot_size",
-                    "distance_to_city_center",
-                    "school_rating",
-                    "price");
+  static final List<String> FIELD_ORDER =
+      List.of(
+          "square_footage",
+          "bedrooms",
+          "bathrooms",
+          "year_built",
+          "lot_size",
+          "distance_to_city_center",
+          "school_rating",
+          "price");
 
-    private final Map<String, Bounds> bounds;
+  private final Map<String, Bounds> bounds;
 
-    SegmentFilter(Map<String, Bounds> bounds) {
-        Map<String, Bounds> ordered = new LinkedHashMap<>();
+  SegmentFilter(Map<String, Bounds> bounds) {
+    Map<String, Bounds> ordered = new LinkedHashMap<>();
 
-        for (String field : FIELD_ORDER) {
-            ordered.put(field, bounds.getOrDefault(field, new Bounds(null, null)));
-        }
-
-        this.bounds = Collections.unmodifiableMap(ordered);
+    for (String field : FIELD_ORDER) {
+      ordered.put(field, bounds.getOrDefault(field, new Bounds(null, null)));
     }
 
-    public static SegmentFilter unrestricted() {
-        Map<String, Bounds> emptyBounds = new LinkedHashMap<>();
+    this.bounds = Collections.unmodifiableMap(ordered);
+  }
 
-        for (String field : FIELD_ORDER) {
-            emptyBounds.put(field, new Bounds(null, null));
-        }
+  public static SegmentFilter unrestricted() {
+    Map<String, Bounds> emptyBounds = new LinkedHashMap<>();
 
-        return new SegmentFilter(emptyBounds);
+    for (String field : FIELD_ORDER) {
+      emptyBounds.put(field, new Bounds(null, null));
     }
 
-    public boolean matches(PropertyRecord property) {
-        for (String field : FIELD_ORDER) {
-            if (!bounds.get(field).contains(value(property, field))) {
-                return false;
-            }
-        }
-        return true;
+    return new SegmentFilter(emptyBounds);
+  }
+
+  public boolean matches(PropertyRecord property) {
+    for (String field : FIELD_ORDER) {
+      if (!bounds.get(field).contains(value(property, field))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public Map<String, Bounds> activeBounds() {
+    Map<String, Bounds> active = new LinkedHashMap<>();
+
+    for (String field : FIELD_ORDER) {
+      Bounds fieldBounds = bounds.get(field);
+      if (fieldBounds.min() != null || fieldBounds.max() != null) {
+        active.put(field, fieldBounds);
+      }
     }
 
-    public Map<String, Bounds> activeBounds() {
-        Map<String, Bounds> active = new LinkedHashMap<>();
+    return Collections.unmodifiableMap(active);
+  }
 
-        for (String field : FIELD_ORDER) {
-            Bounds fieldBounds = bounds.get(field);
-            if (fieldBounds.min() != null || fieldBounds.max() != null) {
-                active.put(field, fieldBounds);
-            }
-        }
+  public String cacheKey() {
+    StringBuilder key = new StringBuilder();
 
-        return Collections.unmodifiableMap(active);
+    for (String field : FIELD_ORDER) {
+      if (!key.isEmpty()) {
+        key.append(';');
+      }
+
+      Bounds fieldBounds = bounds.get(field);
+      key.append(field)
+          .append('=')
+          .append(canonical(fieldBounds.min()))
+          .append(',')
+          .append(canonical(fieldBounds.max()));
     }
 
-    public String cacheKey() {
-        StringBuilder key = new StringBuilder();
+    return key.toString();
+  }
 
-        for (String field : FIELD_ORDER) {
-            if (!key.isEmpty()) {
-                key.append(';');
-            }
+  private static BigDecimal value(PropertyRecord property, String field) {
+    return switch (field) {
+      case "square_footage" -> BigDecimal.valueOf(property.squareFootage());
+      case "bedrooms" -> BigDecimal.valueOf(property.bedrooms());
+      case "bathrooms" -> property.bathrooms();
+      case "year_built" -> BigDecimal.valueOf(property.yearBuilt());
+      case "lot_size" -> BigDecimal.valueOf(property.lotSize());
+      case "distance_to_city_center" -> property.distanceToCityCenter();
+      case "school_rating" -> property.schoolRating();
+      case "price" -> property.price();
+      default -> throw new IllegalArgumentException("Unsupported property field.");
+    };
+  }
 
-            Bounds fieldBounds = bounds.get(field);
-            key.append(field)
-                    .append('=')
-                    .append(canonical(fieldBounds.min()))
-                    .append(',')
-                    .append(canonical(fieldBounds.max()));
-        }
+  private static String canonical(BigDecimal value) {
+    return value == null ? "*" : value.stripTrailingZeros().toString();
+  }
 
-        return key.toString();
+  public record Bounds(BigDecimal min, BigDecimal max) {
+
+    public boolean contains(BigDecimal value) {
+      return (min == null || value.compareTo(min) >= 0)
+          && (max == null || value.compareTo(max) <= 0);
     }
-
-    private static BigDecimal value(PropertyRecord property, String field) {
-        return switch (field) {
-            case "square_footage" -> BigDecimal.valueOf(property.squareFootage());
-            case "bedrooms" -> BigDecimal.valueOf(property.bedrooms());
-            case "bathrooms" -> property.bathrooms();
-            case "year_built" -> BigDecimal.valueOf(property.yearBuilt());
-            case "lot_size" -> BigDecimal.valueOf(property.lotSize());
-            case "distance_to_city_center" -> property.distanceToCityCenter();
-            case "school_rating" -> property.schoolRating();
-            case "price" -> property.price();
-            default -> throw new IllegalArgumentException("Unsupported property field.");
-        };
-    }
-
-    private static String canonical(BigDecimal value) {
-        return value == null ? "*" : value.stripTrailingZeros().toString();
-    }
-
-    public record Bounds(BigDecimal min, BigDecimal max) {
-
-        public boolean contains(BigDecimal value) {
-            return (min == null || value.compareTo(min) >= 0)
-                    && (max == null || value.compareTo(max) <= 0);
-        }
-    }
+  }
 }

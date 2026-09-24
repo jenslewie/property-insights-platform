@@ -22,33 +22,33 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 class MarketAnalysisApplicationTest {
 
-    @Autowired private MockMvc mvc;
+  @Autowired private MockMvc mvc;
 
-    @Autowired private PropertyDataset dataset;
+  @Autowired private PropertyDataset dataset;
 
-    @MockitoBean private ModelPredictionClient modelPredictionClient;
+  @MockitoBean private ModelPredictionClient modelPredictionClient;
 
-    @Test
-    void startsWithValidatedDatasetAndServesHealth() throws Exception {
-        assertThat(dataset.all()).hasSize(50);
+  @Test
+  void startsWithValidatedDatasetAndServesHealth() throws Exception {
+    assertThat(dataset.all()).hasSize(50);
 
-        mvc.perform(get("/health"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("UP"));
+    mvc.perform(get("/health"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("UP"));
 
-        verifyNoInteractions(modelPredictionClient);
-    }
+    verifyNoInteractions(modelPredictionClient);
+  }
 
-    @Test
-    void invalidDatasetStopsStartup() {
-        new ApplicationContextRunner()
-                .withInitializer(new ConfigDataApplicationContextInitializer())
-                .withUserConfiguration(MarketAnalysisApplication.class)
-                .withPropertyValues("market.dataset-path=/path/that/does/not/exist.csv")
-                .run(
-                        context ->
-                                assertThat(context.getStartupFailure())
-                                        .isNotNull()
-                                        .hasRootCauseInstanceOf(NoSuchFileException.class));
-    }
+  @Test
+  void invalidDatasetStopsStartup() {
+    new ApplicationContextRunner()
+        .withInitializer(new ConfigDataApplicationContextInitializer())
+        .withUserConfiguration(MarketAnalysisApplication.class)
+        .withPropertyValues("market.dataset-path=/path/that/does/not/exist.csv")
+        .run(
+            context ->
+                assertThat(context.getStartupFailure())
+                    .isNotNull()
+                    .hasRootCauseInstanceOf(NoSuchFileException.class));
+  }
 }

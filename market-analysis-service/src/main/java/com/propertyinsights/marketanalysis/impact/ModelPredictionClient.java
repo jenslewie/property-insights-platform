@@ -6,5 +6,5 @@ import java.util.List;
 @FunctionalInterface
 public interface ModelPredictionClient {
 
-    List<BigDecimal> predict(List<HousingFeatures> properties);
+  List<BigDecimal> predict(List<HousingFeatures> properties);
 }

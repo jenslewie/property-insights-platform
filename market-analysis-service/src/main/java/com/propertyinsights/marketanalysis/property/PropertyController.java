@@ -9,15 +9,15 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Properties")
 public final class PropertyController {
 
-    private final PropertyDataset dataset;
+  private final PropertyDataset dataset;
 
-    public PropertyController(PropertyDataset dataset) {
-        this.dataset = dataset;
-    }
+  public PropertyController(PropertyDataset dataset) {
+    this.dataset = dataset;
+  }
 
-    @GetMapping("/api/v1/properties")
-    public PropertyListResponse all() {
-        List<PropertyRecord> properties = dataset.all();
-        return new PropertyListResponse(properties.size(), properties);
-    }
+  @GetMapping("/api/v1/properties")
+  public PropertyListResponse all() {
+    List<PropertyRecord> properties = dataset.all();
+    return new PropertyListResponse(properties.size(), properties);
+  }
 }

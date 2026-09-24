@@ -46,199 +46,194 @@ import org.springframework.test.web.servlet.MvcResult;
 @Import(ExportApiTest.FixedClockConfiguration.class)
 class ExportApiTest {
 
-    private static final Instant GENERATED_AT = Instant.parse("2026-09-23T00:00:00Z");
-    private static final String EXPORT_PATH = "/api/v1/market/export";
+  private static final Instant GENERATED_AT = Instant.parse("2026-09-23T00:00:00Z");
+  private static final String EXPORT_PATH = "/api/v1/market/export";
 
-    @Autowired private MockMvc mockMvc;
+  @Autowired private MockMvc mockMvc;
 
-    @MockitoBean private ModelPredictionClient predictionClient;
+  @MockitoBean private ModelPredictionClient predictionClient;
 
-    @BeforeEach
-    void setUp() {
-        doAnswer(
-                        invocation ->
-                                ((List<HousingFeatures>) invocation.getArgument(0))
-                                        .stream()
-                                                .map(
-                                                        features ->
-                                                                BigDecimal.valueOf(
-                                                                        features.squareFootage()
-                                                                                * 100L))
-                                                .toList())
-                .when(predictionClient)
-                .predict(anyList());
+  @BeforeEach
+  void setUp() {
+    doAnswer(
+            invocation ->
+                ((List<HousingFeatures>) invocation.getArgument(0))
+                    .stream()
+                        .map(features -> BigDecimal.valueOf(features.squareFootage() * 100L))
+                        .toList())
+        .when(predictionClient)
+        .predict(anyList());
+  }
+
+  @Test
+  void csvAndPdfShareFilenameAndEveryFilteredSourceRow() throws Exception {
+    String csvFilename =
+        downloadCsv(
+            get(EXPORT_PATH)
+                .param("format", "csv")
+                .param("min_price", "350000")
+                .param("scenario_school_rating_delta", "0.5"));
+    String csv = lastCsv;
+
+    verifyNoInteractions(predictionClient);
+
+    MvcResult started =
+        mockMvc
+            .perform(
+                get(EXPORT_PATH)
+                    .param("format", "pdf")
+                    .param("min_price", "350000")
+                    .param("scenario_school_rating_delta", "0.5"))
+            .andExpect(request().asyncStarted())
+            .andReturn();
+    byte[] pdf =
+        mockMvc
+            .perform(asyncDispatch(started))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Disposition", csvFilename.replace(".csv", ".pdf")))
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF))
+            .andReturn()
+            .getResponse()
+            .getContentAsByteArray();
+
+    assertThat(new String(pdf, 0, 4, StandardCharsets.US_ASCII)).isEqualTo("%PDF");
+    List<Long> csvIds = csvIds(csv);
+    try (PDDocument document = Loader.loadPDF(pdf)) {
+      assertThat(document.getNumberOfPages()).isGreaterThan(1);
+      String text = new PDFTextStripper().getText(document);
+      assertThat(text)
+          .contains(
+              "Historical price summary",
+              "Predicted baseline and scenario",
+              "school_rating_delta: 0.5",
+              GENERATED_AT.toString());
+      for (Long id : csvIds) {
+        assertThat(text).contains("Property ID: " + id);
+      }
     }
+    verify(predictionClient, times(2)).predict(anyList());
+  }
 
-    @Test
-    void csvAndPdfShareFilenameAndEveryFilteredSourceRow() throws Exception {
-        String csvFilename =
-                downloadCsv(
-                        get(EXPORT_PATH)
-                                .param("format", "csv")
-                                .param("min_price", "350000")
-                                .param("scenario_school_rating_delta", "0.5"));
-        String csv = lastCsv;
+  @Test
+  void equivalentFiltersAndScenarioValuesProduceTheSameFilename() throws Exception {
+    String first =
+        downloadCsv(
+            get(EXPORT_PATH)
+                .param("format", "csv")
+                .param("min_price", "350000")
+                .param("max_bedrooms", "4")
+                .param("scenario_school_rating_delta", "1.00"));
+    String second =
+        downloadCsv(
+            get(EXPORT_PATH)
+                .param("scenario_school_rating_delta", "1.0")
+                .param("max_bedrooms", "4.0")
+                .param("format", "csv")
+                .param("min_price", "350000.0"));
 
-        verifyNoInteractions(predictionClient);
+    assertThat(second).isEqualTo(first);
 
-        MvcResult started =
-                mockMvc.perform(
-                                get(EXPORT_PATH)
-                                        .param("format", "pdf")
-                                        .param("min_price", "350000")
-                                        .param("scenario_school_rating_delta", "0.5"))
-                        .andExpect(request().asyncStarted())
-                        .andReturn();
-        byte[] pdf =
-                mockMvc.perform(asyncDispatch(started))
-                        .andExpect(status().isOk())
-                        .andExpect(
-                                header().string(
-                                                "Content-Disposition",
-                                                csvFilename.replace(".csv", ".pdf")))
-                        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF))
-                        .andReturn()
-                        .getResponse()
-                        .getContentAsByteArray();
+    String changed =
+        downloadCsv(
+            get(EXPORT_PATH)
+                .param("format", "csv")
+                .param("min_price", "350001")
+                .param("max_bedrooms", "4")
+                .param("scenario_school_rating_delta", "1"));
+    assertThat(changed).isNotEqualTo(first);
+  }
 
-        assertThat(new String(pdf, 0, 4, StandardCharsets.US_ASCII)).isEqualTo("%PDF");
-        List<Long> csvIds = csvIds(csv);
-        try (PDDocument document = Loader.loadPDF(pdf)) {
-            assertThat(document.getNumberOfPages()).isGreaterThan(1);
-            String text = new PDFTextStripper().getText(document);
-            assertThat(text)
-                    .contains(
-                            "Historical price summary",
-                            "Predicted baseline and scenario",
-                            "school_rating_delta: 0.5",
-                            GENERATED_AT.toString());
-            for (Long id : csvIds) {
-                assertThat(text).contains("Property ID: " + id);
-            }
-        }
-        verify(predictionClient, times(2)).predict(anyList());
+  @Test
+  void unfilteredExportsUseTheDocumentedAnalysisKey() throws Exception {
+    String filename = downloadCsv(get(EXPORT_PATH).param("format", "csv"));
+    assertThat(filename)
+        .isEqualTo("attachment; filename=property-market-analysis_" + "145a21b6.csv");
+  }
+
+  @Test
+  void rejectsUnknownDuplicateAndLegacyParameters() throws Exception {
+    for (var requestBuilder :
+        List.of(
+            get(EXPORT_PATH).param("format", "csv").param("type", "data"),
+            get(EXPORT_PATH).param("format", "csv", "pdf"),
+            get(EXPORT_PATH).param("format", "csv").param("scenario_school_rating_delta", "1", "2"),
+            get(EXPORT_PATH).param("format", "csv").param("unknown", "x"),
+            get(EXPORT_PATH).param("format", "csv").param("scenario_school_rating_delta", "0"))) {
+      mockMvc
+          .perform(requestBuilder)
+          .andExpect(status().isBadRequest())
+          .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
     }
+    verifyNoInteractions(predictionClient);
+  }
 
-    @Test
-    void equivalentFiltersAndScenarioValuesProduceTheSameFilename() throws Exception {
-        String first =
-                downloadCsv(
-                        get(EXPORT_PATH)
-                                .param("format", "csv")
-                                .param("min_price", "350000")
-                                .param("max_bedrooms", "4")
-                                .param("scenario_school_rating_delta", "1.00"));
-        String second =
-                downloadCsv(
-                        get(EXPORT_PATH)
-                                .param("scenario_school_rating_delta", "1.0")
-                                .param("max_bedrooms", "4.0")
-                                .param("format", "csv")
-                                .param("min_price", "350000.0"));
+  @Test
+  void noMatchReturnsProblemDetailBeforeStartingDownload() throws Exception {
+    mockMvc
+        .perform(get(EXPORT_PATH).param("format", "csv").param("min_price", "999999"))
+        .andExpect(status().isNotFound())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
 
-        assertThat(second).isEqualTo(first);
+    mockMvc
+        .perform(get(EXPORT_PATH).param("format", "pdf").param("min_price", "999999"))
+        .andExpect(status().isNotFound())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+  }
 
-        String changed =
-                downloadCsv(
-                        get(EXPORT_PATH)
-                                .param("format", "csv")
-                                .param("min_price", "350001")
-                                .param("max_bedrooms", "4")
-                                .param("scenario_school_rating_delta", "1"));
-        assertThat(changed).isNotEqualTo(first);
+  @Test
+  void modelFailureRejectsPdfBeforeStreamingStarts() throws Exception {
+    org.mockito.Mockito.when(predictionClient.predict(anyList()))
+        .thenThrow(
+            new ApiException(
+                org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                "Model service is unavailable."));
+
+    mockMvc
+        .perform(
+            get(EXPORT_PATH)
+                .param("format", "pdf")
+                .param("min_price", "350000")
+                .param("scenario_school_rating_delta", "0.5"))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(request().asyncNotStarted())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+  }
+
+  private String lastCsv;
+
+  private String downloadCsv(
+      org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder builder)
+      throws Exception {
+    MvcResult started = mockMvc.perform(builder).andExpect(request().asyncStarted()).andReturn();
+    var response =
+        mockMvc
+            .perform(asyncDispatch(started))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith("text/csv"))
+            .andReturn()
+            .getResponse();
+    String disposition = response.getHeader("Content-Disposition");
+    lastCsv = response.getContentAsString(StandardCharsets.UTF_8);
+    return disposition;
+  }
+
+  private List<Long> csvIds(String csv) throws Exception {
+    try (CSVParser parser = CSVParser.parse(csv, CSVFormat.DEFAULT)) {
+      return parser.getRecords().stream()
+          .skip(1)
+          .map(record -> record.get(0))
+          .map(Long::valueOf)
+          .toList();
     }
+  }
 
-    @Test
-    void unfilteredExportsUseTheDocumentedAnalysisKey() throws Exception {
-        String filename = downloadCsv(get(EXPORT_PATH).param("format", "csv"));
-        assertThat(filename)
-                .isEqualTo("attachment; filename=property-market-analysis_" + "145a21b6.csv");
+  @TestConfiguration(proxyBeanMethods = false)
+  static class FixedClockConfiguration {
+
+    @Bean
+    @Primary
+    Clock fixedClock() {
+      return Clock.fixed(GENERATED_AT, ZoneOffset.UTC);
     }
-
-    @Test
-    void rejectsUnknownDuplicateAndLegacyParameters() throws Exception {
-        for (var requestBuilder :
-                List.of(
-                        get(EXPORT_PATH).param("format", "csv").param("type", "data"),
-                        get(EXPORT_PATH).param("format", "csv", "pdf"),
-                        get(EXPORT_PATH)
-                                .param("format", "csv")
-                                .param("scenario_school_rating_delta", "1", "2"),
-                        get(EXPORT_PATH).param("format", "csv").param("unknown", "x"),
-                        get(EXPORT_PATH)
-                                .param("format", "csv")
-                                .param("scenario_school_rating_delta", "0"))) {
-            mockMvc.perform(requestBuilder)
-                    .andExpect(status().isBadRequest())
-                    .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
-        }
-        verifyNoInteractions(predictionClient);
-    }
-
-    @Test
-    void noMatchReturnsProblemDetailBeforeStartingDownload() throws Exception {
-        mockMvc.perform(get(EXPORT_PATH).param("format", "csv").param("min_price", "999999"))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
-
-        mockMvc.perform(get(EXPORT_PATH).param("format", "pdf").param("min_price", "999999"))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
-    }
-
-    @Test
-    void modelFailureRejectsPdfBeforeStreamingStarts() throws Exception {
-        org.mockito.Mockito.when(predictionClient.predict(anyList()))
-                .thenThrow(
-                        new ApiException(
-                                org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
-                                "Model service is unavailable."));
-
-        mockMvc.perform(
-                        get(EXPORT_PATH)
-                                .param("format", "pdf")
-                                .param("min_price", "350000")
-                                .param("scenario_school_rating_delta", "0.5"))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(request().asyncNotStarted())
-                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
-    }
-
-    private String lastCsv;
-
-    private String downloadCsv(
-            org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder builder)
-            throws Exception {
-        MvcResult started =
-                mockMvc.perform(builder).andExpect(request().asyncStarted()).andReturn();
-        var response =
-                mockMvc.perform(asyncDispatch(started))
-                        .andExpect(status().isOk())
-                        .andExpect(content().contentTypeCompatibleWith("text/csv"))
-                        .andReturn()
-                        .getResponse();
-        String disposition = response.getHeader("Content-Disposition");
-        lastCsv = response.getContentAsString(StandardCharsets.UTF_8);
-        return disposition;
-    }
-
-    private List<Long> csvIds(String csv) throws Exception {
-        try (CSVParser parser = CSVParser.parse(csv, CSVFormat.DEFAULT)) {
-            return parser.getRecords().stream()
-                    .skip(1)
-                    .map(record -> record.get(0))
-                    .map(Long::valueOf)
-                    .toList();
-        }
-    }
-
-    @TestConfiguration(proxyBeanMethods = false)
-    static class FixedClockConfiguration {
-
-        @Bean
-        @Primary
-        Clock fixedClock() {
-            return Clock.fixed(GENERATED_AT, ZoneOffset.UTC);
-        }
-    }
+  }
 }

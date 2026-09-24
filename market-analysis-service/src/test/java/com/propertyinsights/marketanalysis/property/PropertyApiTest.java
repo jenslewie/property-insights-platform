@@ -15,24 +15,26 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 class PropertyApiTest {
 
-    @Autowired private MockMvc mockMvc;
+  @Autowired private MockMvc mockMvc;
 
-    @Test
-    void propertiesEndpointReturnsCompleteDatasetInSourceOrder() throws Exception {
-        mockMvc.perform(get("/api/v1/properties"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.count").value(50))
-                .andExpect(jsonPath("$.properties", hasSize(50)))
-                .andExpect(jsonPath("$.properties[0].id").value(1))
-                .andExpect(jsonPath("$.properties[0].square_footage").value(1250))
-                .andExpect(jsonPath("$.properties[0].price").value(185000));
-    }
+  @Test
+  void propertiesEndpointReturnsCompleteDatasetInSourceOrder() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/properties"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.count").value(50))
+        .andExpect(jsonPath("$.properties", hasSize(50)))
+        .andExpect(jsonPath("$.properties[0].id").value(1))
+        .andExpect(jsonPath("$.properties[0].square_footage").value(1250))
+        .andExpect(jsonPath("$.properties[0].price").value(185000));
+  }
 
-    @Test
-    void propertiesEndpointReturnsCompleteDatasetWithoutApplyingQueryParameters() throws Exception {
-        mockMvc.perform(get("/api/v1/properties").param("page", "1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.count").value(50))
-                .andExpect(jsonPath("$.properties", hasSize(50)));
-    }
+  @Test
+  void propertiesEndpointReturnsCompleteDatasetWithoutApplyingQueryParameters() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/properties").param("page", "1"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.count").value(50))
+        .andExpect(jsonPath("$.properties", hasSize(50)));
+  }
 }

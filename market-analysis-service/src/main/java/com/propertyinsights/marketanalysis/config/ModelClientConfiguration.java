@@ -9,14 +9,14 @@ import org.springframework.web.client.RestClient;
 @Configuration(proxyBeanMethods = false)
 public class ModelClientConfiguration {
 
-    @Bean
-    RestClient modelRestClient(RestClient.Builder builder, MarketSettings settings) {
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        Duration timeout = Duration.ofSeconds(settings.modelTimeoutSeconds());
+  @Bean
+  RestClient modelRestClient(RestClient.Builder builder, MarketSettings settings) {
+    SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+    Duration timeout = Duration.ofSeconds(settings.modelTimeoutSeconds());
 
-        requestFactory.setConnectTimeout(timeout);
-        requestFactory.setReadTimeout(timeout);
+    requestFactory.setConnectTimeout(timeout);
+    requestFactory.setReadTimeout(timeout);
 
-        return builder.baseUrl(settings.modelUrl()).requestFactory(requestFactory).build();
-    }
+    return builder.baseUrl(settings.modelUrl()).requestFactory(requestFactory).build();
+  }
 }

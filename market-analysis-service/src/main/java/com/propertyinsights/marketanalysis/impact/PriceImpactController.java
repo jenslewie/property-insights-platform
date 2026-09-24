@@ -17,27 +17,27 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Market")
 public final class PriceImpactController {
 
-    private final PriceImpactService service;
+  private final PriceImpactService service;
 
-    public PriceImpactController(PriceImpactService service) {
-        this.service = service;
-    }
+  public PriceImpactController(PriceImpactService service) {
+    this.service = service;
+  }
 
-    @PostMapping
-    public PriceImpactResponse analyze(
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                            required = true,
-                            content =
-                                    @Content(
-                                            mediaType = "application/json",
-                                            schema = @Schema(type = "object"),
-                                            examples =
-                                                    @ExampleObject(
-                                                            name = "validPriceImpact",
-                                                            summary =
-                                                                    "Increase school ratings and living area for a filtered segment.",
-                                                            value =
-                                                                    """
+  @PostMapping
+  public PriceImpactResponse analyze(
+      @io.swagger.v3.oas.annotations.parameters.RequestBody(
+              required = true,
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema = @Schema(type = "object"),
+                      examples =
+                          @ExampleObject(
+                              name = "validPriceImpact",
+                              summary =
+                                  "Increase school ratings and living area for a filtered segment.",
+                              value =
+                                  """
                                                     {
                                                       "filters": {"min_bedrooms": 3},
                                                       "scenario": {
@@ -48,28 +48,28 @@ public final class PriceImpactController {
                                                       }
                                                     }
                                                     """)))
-                    @RequestBody
-                    JsonNode request) {
-        if (request == null
-                || !request.isObject()
-                || request.size() != 2
-                || !request.has("filters")
-                || !request.has("scenario")) {
-            throw invalidRequest();
-        }
-
-        JsonNode scenario = request.get("scenario");
-        if (scenario == null
-                || !scenario.isObject()
-                || scenario.size() != 1
-                || !scenario.has("adjustments")) {
-            throw invalidRequest();
-        }
-
-        return service.compare(request.get("filters"), scenario.get("adjustments"));
+          @RequestBody
+          JsonNode request) {
+    if (request == null
+        || !request.isObject()
+        || request.size() != 2
+        || !request.has("filters")
+        || !request.has("scenario")) {
+      throw invalidRequest();
     }
 
-    private static ApiException invalidRequest() {
-        return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid price impact request.");
+    JsonNode scenario = request.get("scenario");
+    if (scenario == null
+        || !scenario.isObject()
+        || scenario.size() != 1
+        || !scenario.has("adjustments")) {
+      throw invalidRequest();
     }
+
+    return service.compare(request.get("filters"), scenario.get("adjustments"));
+  }
+
+  private static ApiException invalidRequest() {
+    return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid price impact request.");
+  }
 }

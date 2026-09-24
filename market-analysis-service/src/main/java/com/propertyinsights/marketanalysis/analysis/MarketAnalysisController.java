@@ -15,32 +15,31 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Market")
 public final class MarketAnalysisController {
 
-    private final SegmentFilterParser parser;
-    private final MarketAnalysisService service;
+  private final SegmentFilterParser parser;
+  private final MarketAnalysisService service;
 
-    public MarketAnalysisController(SegmentFilterParser parser, MarketAnalysisService service) {
-        this.parser = parser;
-        this.service = service;
-    }
+  public MarketAnalysisController(SegmentFilterParser parser, MarketAnalysisService service) {
+    this.parser = parser;
+    this.service = service;
+  }
 
-    @GetMapping("/summary")
-    @SegmentFilterParameters
-    public MarketSummary summary(
-            @Parameter(hidden = true) @RequestParam MultiValueMap<String, String> params) {
-        return service.summary(parser.parse(params));
-    }
+  @GetMapping("/summary")
+  @SegmentFilterParameters
+  public MarketSummary summary(
+      @Parameter(hidden = true) @RequestParam MultiValueMap<String, String> params) {
+    return service.summary(parser.parse(params));
+  }
 
-    @GetMapping("/distributions/{dimension}")
-    @SegmentFilterParameters
-    public DistributionResponse distribution(
-            @Parameter(
-                            description = "Property field whose distribution is returned.",
-                            example = "price",
-                            schema = @Schema(implementation = DistributionDimension.class))
-                    @PathVariable
-                    String dimension,
-            @Parameter(hidden = true) @RequestParam MultiValueMap<String, String> params) {
-        return service.distribution(
-                parser.parse(params), DistributionDimension.fromPath(dimension));
-    }
+  @GetMapping("/distributions/{dimension}")
+  @SegmentFilterParameters
+  public DistributionResponse distribution(
+      @Parameter(
+              description = "Property field whose distribution is returned.",
+              example = "price",
+              schema = @Schema(implementation = DistributionDimension.class))
+          @PathVariable
+          String dimension,
+      @Parameter(hidden = true) @RequestParam MultiValueMap<String, String> params) {
+    return service.distribution(parser.parse(params), DistributionDimension.fromPath(dimension));
+  }
 }

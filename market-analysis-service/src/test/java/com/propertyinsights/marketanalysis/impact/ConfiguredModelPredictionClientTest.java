@@ -18,20 +18,20 @@ import org.springframework.web.client.RestClient;
 @SpringBootTest
 class ConfiguredModelPredictionClientTest {
 
-    @Autowired private RestClient.Builder builder;
+  @Autowired private RestClient.Builder builder;
 
-    @Test
-    void springConfiguredClientSendsSnakeCaseModelFeatures() {
-        builder.baseUrl("http://localhost:9003")
-                .requestFactory(new SimpleClientHttpRequestFactory());
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        HttpModelPredictionClient client = new HttpModelPredictionClient(builder.build());
+  @Test
+  void springConfiguredClientSendsSnakeCaseModelFeatures() {
+    builder.baseUrl("http://localhost:9003").requestFactory(new SimpleClientHttpRequestFactory());
+    MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+    HttpModelPredictionClient client = new HttpModelPredictionClient(builder.build());
 
-        server.expect(requestTo("http://localhost:9003/api/v1/properties/predict"))
-                .andExpect(
-                        content()
-                                .json(
-                                        """
+    server
+        .expect(requestTo("http://localhost:9003/api/v1/properties/predict"))
+        .andExpect(
+            content()
+                .json(
+                    """
                         [
                           {
                             "square_footage": 1550,
@@ -53,32 +53,31 @@ class ConfiguredModelPredictionClientTest {
                           }
                         ]
                         """))
-                .andRespond(
-                        withSuccess(
-                                "{\"count\":2,\"predictions\":[420000,465000]}",
-                                MediaType.APPLICATION_JSON));
+        .andRespond(
+            withSuccess(
+                "{\"count\":2,\"predictions\":[420000,465000]}", MediaType.APPLICATION_JSON));
 
-        HousingFeatures baseline =
-                new HousingFeatures(
-                        1550,
-                        3,
-                        new BigDecimal("2.0"),
-                        1997,
-                        6800,
-                        new BigDecimal("4.1"),
-                        new BigDecimal("7.6"));
-        HousingFeatures scenario =
-                new HousingFeatures(
-                        1800,
-                        3,
-                        new BigDecimal("2.0"),
-                        1997,
-                        6800,
-                        new BigDecimal("4.1"),
-                        new BigDecimal("7.6"));
+    HousingFeatures baseline =
+        new HousingFeatures(
+            1550,
+            3,
+            new BigDecimal("2.0"),
+            1997,
+            6800,
+            new BigDecimal("4.1"),
+            new BigDecimal("7.6"));
+    HousingFeatures scenario =
+        new HousingFeatures(
+            1800,
+            3,
+            new BigDecimal("2.0"),
+            1997,
+            6800,
+            new BigDecimal("4.1"),
+            new BigDecimal("7.6"));
 
-        assertThat(client.predict(List.of(baseline, scenario)))
-                .containsExactly(new BigDecimal("420000"), new BigDecimal("465000"));
-        server.verify();
-    }
+    assertThat(client.predict(List.of(baseline, scenario)))
+        .containsExactly(new BigDecimal("420000"), new BigDecimal("465000"));
+    server.verify();
+  }
 }

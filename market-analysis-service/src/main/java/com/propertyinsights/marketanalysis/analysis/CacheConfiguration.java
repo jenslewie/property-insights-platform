@@ -11,12 +11,12 @@ import org.springframework.context.annotation.Configuration;
 @EnableCaching
 public class CacheConfiguration {
 
-    @Bean
-    public CaffeineCacheManager cacheManager(MarketSettings settings) {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("marketStats");
+  @Bean
+  public CaffeineCacheManager cacheManager(MarketSettings settings) {
+    CaffeineCacheManager cacheManager = new CaffeineCacheManager("marketStats");
 
-        cacheManager.setCaffeine(Caffeine.newBuilder().maximumSize(settings.cacheMaximumSize()));
+    cacheManager.setCaffeine(Caffeine.newBuilder().maximumSize(settings.cacheMaximumSize()));
 
-        return cacheManager;
-    }
+    return cacheManager;
+  }
 }

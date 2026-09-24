@@ -14,18 +14,18 @@ import java.util.List;
 import java.util.Map;
 
 public record ReportData(
-        SegmentFilter filter,
-        MarketSummary summary,
-        Map<DistributionDimension, DistributionResponse> distributions,
-        List<PropertyRecord> properties,
-        ScenarioAdjustments scenario,
-        PriceImpactResponse priceImpact,
-        Instant generatedAt) {
-    public ReportData {
-        EnumMap<DistributionDimension, DistributionResponse> copy =
-                new EnumMap<>(DistributionDimension.class);
-        copy.putAll(distributions);
-        distributions = Collections.unmodifiableMap(copy);
-        properties = List.copyOf(properties);
-    }
+    SegmentFilter filter,
+    MarketSummary summary,
+    Map<DistributionDimension, DistributionResponse> distributions,
+    List<PropertyRecord> properties,
+    ScenarioAdjustments scenario,
+    PriceImpactResponse priceImpact,
+    Instant generatedAt) {
+  public ReportData {
+    EnumMap<DistributionDimension, DistributionResponse> copy =
+        new EnumMap<>(DistributionDimension.class);
+    copy.putAll(distributions);
+    distributions = Collections.unmodifiableMap(copy);
+    properties = List.copyOf(properties);
+  }
 }
