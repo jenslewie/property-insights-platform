@@ -21,6 +21,7 @@ services:
       HOUSE_PRICE_MODEL_URL: http://house-price-model-service:9003
       HOUSE_PRICE_MODEL_TIMEOUT_SECONDS: 5
       MARKET_CACHE_MAXIMUM_SIZE: 500
+      BATCH_PREDICTION_LIMIT: ${BATCH_PREDICTION_LIMIT:-20}
     ports:
       - "9002:9002"
     depends_on:

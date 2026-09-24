@@ -5,12 +5,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.propertyinsights.marketanalysis.analysis.SegmentFilterParser;
+import com.propertyinsights.marketanalysis.config.MarketSettings;
 import com.propertyinsights.marketanalysis.error.ApiException;
+import com.propertyinsights.marketanalysis.property.PropertyDataset;
+import com.propertyinsights.marketanalysis.property.PropertyRecord;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
@@ -18,200 +21,168 @@ class PriceImpactServiceTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final List<List<HousingFeatures>> calls = new ArrayList<>();
-    private List<BigDecimal> predictions =
-            List.of(new BigDecimal("420000"), new BigDecimal("465000"));
+    private List<BigDecimal> predictions;
+    private Function<List<HousingFeatures>, List<BigDecimal>> predictionFunction =
+            features -> predictions;
 
     private final ModelPredictionClient client =
             features -> {
                 calls.add(List.copyOf(features));
-                return predictions;
+                return predictionFunction.apply(features);
             };
 
-    private final PriceImpactService service =
-            new PriceImpactService(new HousingFeaturesCodec(), client);
-
     @Test
-    void comparesBaselineAndScenarioUsingOneBatchCall() {
-        ObjectNode changes =
-                mapper.createObjectNode()
-                        .put("square_footage", 1800)
-                        .put("school_rating", new BigDecimal("8.5"));
+    void comparesMarketMetricsForFilteredPropertiesInPairedOrder() throws Exception {
+        predictions =
+                List.of(
+                        new BigDecimal("900"),
+                        new BigDecimal("1000"),
+                        new BigDecimal("1000"),
+                        new BigDecimal("1100"));
+        PriceImpactService service =
+                service(
+                        List.of(property(1, 2, "8"), property(2, 3, "9"), property(3, 3, "10")),
+                        20);
 
-        PriceImpactResponse result = service.compare(baseline(), changes);
+        PriceImpactResponse result =
+                service.compare(
+                        mapper.readTree("{\"min_bedrooms\":3}"),
+                        mapper.readTree("{\"school_rating_delta\":1}"));
 
         assertThat(calls)
                 .containsExactly(
                         List.of(
-                                new HousingFeatures(
-                                        1550,
-                                        3,
-                                        new BigDecimal("2.0"),
-                                        1997,
-                                        6800,
-                                        new BigDecimal("4.1"),
-                                        new BigDecimal("7.6")),
-                                new HousingFeatures(
-                                        1800,
-                                        3,
-                                        new BigDecimal("2.0"),
-                                        1997,
-                                        6800,
-                                        new BigDecimal("4.1"),
-                                        new BigDecimal("8.5"))));
-        assertThat(result.changes().keySet()).containsExactly("square_footage", "school_rating");
-        assertThat(result.changes().get("square_footage"))
+                                features(1200, 3, "9"),
+                                features(1200, 3, "10"),
+                                features(1300, 3, "10"),
+                                features(1300, 3, "11")));
+        assertThat(result.propertyCount()).isEqualTo(2);
+        assertThat(result.baseline())
                 .isEqualTo(
-                        new PriceImpactResponse.FeatureChange(
-                                new BigDecimal("1550"), new BigDecimal("1800")));
-        assertThat(result.changes().get("school_rating"))
-                .isEqualTo(
-                        new PriceImpactResponse.FeatureChange(
-                                new BigDecimal("7.6"), new BigDecimal("8.5")));
-        assertThat(result.baselinePredictedPrice()).isEqualByComparingTo("420000.00");
-        assertThat(result.scenarioPredictedPrice()).isEqualByComparingTo("465000.00");
-        assertThat(result.absoluteChange()).isEqualByComparingTo("45000.00");
-        assertThat(result.percentageChange()).isEqualByComparingTo("10.71");
+                        new PriceImpactResponse.PriceMetrics(
+                                new BigDecimal("950.00"),
+                                new BigDecimal("950.00"),
+                                new BigDecimal("900.00"),
+                                new BigDecimal("1000.00")));
+        assertThat(result.scenario().mean()).isEqualByComparingTo("1050.00");
+        assertThat(result.impact().mean().absoluteChange()).isEqualByComparingTo("100.00");
+        assertThat(result.impact().mean().percentageChange()).isEqualByComparingTo("10.53");
     }
 
     @Test
-    void reportsEveryChangedFeatureInRequestSchemaOrder() {
-        ObjectNode changes =
-                mapper.createObjectNode()
-                        .put("school_rating", 8.5)
-                        .put("distance_to_city_center", 3.5)
-                        .put("lot_size", 7000)
-                        .put("year_built", 2000)
-                        .put("bathrooms", 2.5)
-                        .put("bedrooms", 4)
-                        .put("square_footage", 1800);
-
-        PriceImpactResponse result = service.compare(baseline(), changes);
-
-        assertThat(result.changes().keySet())
-                .containsExactly(
-                        "square_footage",
-                        "bedrooms",
-                        "bathrooms",
-                        "year_built",
-                        "lot_size",
-                        "distance_to_city_center",
-                        "school_rating");
-        assertThat(result.changes())
-                .containsEntry("square_footage", change("1550", "1800"))
-                .containsEntry("bedrooms", change("3", "4"))
-                .containsEntry("bathrooms", change("2.0", "2.5"))
-                .containsEntry("year_built", change("1997", "2000"))
-                .containsEntry("lot_size", change("6800", "7000"))
-                .containsEntry("distance_to_city_center", change("4.1", "3.5"))
-                .containsEntry("school_rating", change("7.6", "8.5"));
-    }
-
-    @Test
-    void returnsNullPercentageWhenBaselineEstimateIsZero() {
-        predictions = List.of(BigDecimal.ZERO, new BigDecimal("10"));
+    void batchesByWholePropertyPairsWithinModelLimit() throws Exception {
+        List<PropertyRecord> properties = new ArrayList<>();
+        for (int index = 0; index < 50; index++) {
+            properties.add(property(index + 1L, 3, Integer.toString(1 + index % 10), 1000 + index));
+        }
+        PriceImpactService service = service(properties, 20);
+        predictionFunction =
+                features ->
+                        features.stream()
+                                .map(item -> BigDecimal.valueOf(item.squareFootage()))
+                                .toList();
 
         PriceImpactResponse result =
-                service.compare(baseline(), mapper.createObjectNode().put("school_rating", 8.5));
+                service.compare(
+                        mapper.readTree("{}"), mapper.readTree("{\"school_rating_delta\":1}"));
 
-        assertThat(result.baselinePredictedPrice()).isEqualByComparingTo("0.00");
-        assertThat(result.absoluteChange()).isEqualByComparingTo("10.00");
-        assertThat(result.percentageChange()).isNull();
+        assertThat(result.propertyCount()).isEqualTo(50);
+        assertThat(calls).hasSize(5);
+        assertThat(calls).allSatisfy(batch -> assertThat(batch).hasSize(20));
+        assertThat(calls.getFirst().get(0).squareFootage()).isEqualTo(1000);
+        assertThat(calls.getFirst().get(1).squareFootage()).isEqualTo(1000);
+        assertThat(calls.getFirst().get(2).squareFootage()).isEqualTo(1001);
+        assertThat(calls.getLast().get(18).squareFootage()).isEqualTo(1049);
     }
 
     @Test
-    void keepsNegativeEstimateChangesNegative() {
-        predictions = List.of(new BigDecimal("465000"), new BigDecimal("420000"));
-
-        PriceImpactResponse result =
-                service.compare(baseline(), mapper.createObjectNode().put("school_rating", 8.5));
-
-        assertThat(result.absoluteChange()).isEqualByComparingTo("-45000.00");
-        assertThat(result.percentageChange()).isEqualByComparingTo("-9.68");
-    }
-
-    @Test
-    void rejectsNoOpChangeEvenWhenNumericScaleDiffers() {
-        ObjectNode changes = mapper.createObjectNode().put("bathrooms", new BigDecimal("2"));
-
-        assertProblem(baseline(), changes, HttpStatus.UNPROCESSABLE_ENTITY);
-        assertThat(calls).isEmpty();
-    }
-
-    @Test
-    void rejectsInvalidInputsBeforeCallingModel() {
-        ObjectNode missingBaselineFeature = baseline();
-        missingBaselineFeature.remove("year_built");
-        assertProblem(missingBaselineFeature, validChanges(), HttpStatus.UNPROCESSABLE_ENTITY);
-
-        ObjectNode nullBaselineFeature = baseline();
-        nullBaselineFeature.putNull("school_rating");
-        assertProblem(nullBaselineFeature, validChanges(), HttpStatus.UNPROCESSABLE_ENTITY);
-
-        assertProblem(null, validChanges(), HttpStatus.UNPROCESSABLE_ENTITY);
-
-        assertProblem(baseline(), mapper.createObjectNode(), HttpStatus.UNPROCESSABLE_ENTITY);
-
-        ObjectNode nullChange = mapper.createObjectNode().putNull("school_rating");
-        assertProblem(baseline(), nullChange, HttpStatus.UNPROCESSABLE_ENTITY);
-
-        ObjectNode unknownChange = mapper.createObjectNode().put("garage_spaces", 2);
-        assertProblem(baseline(), unknownChange, HttpStatus.UNPROCESSABLE_ENTITY);
-
-        ObjectNode fractionalIntegerChange = mapper.createObjectNode().put("bedrooms", 3.5);
-        assertProblem(baseline(), fractionalIntegerChange, HttpStatus.UNPROCESSABLE_ENTITY);
-
-        ObjectNode outOfRangeChange = mapper.createObjectNode().put("square_footage", 10001);
-        assertProblem(baseline(), outOfRangeChange, HttpStatus.UNPROCESSABLE_ENTITY);
+    void rejectsEmptySegmentNoOpAndInvalidScenarioBeforeModelCalls() throws Exception {
+        predictions = List.of(new BigDecimal("10"), new BigDecimal("20"));
+        PriceImpactService service = service(List.of(property(1, 3, "8")), 20);
 
         assertProblem(
-                baseline(),
-                mapper.createObjectNode().put("school_rating", 7.6),
+                service,
+                mapper.readTree("{\"min_bedrooms\":9}"),
+                mapper.readTree("{\"school_rating_delta\":1}"),
+                HttpStatus.UNPROCESSABLE_ENTITY);
+        assertProblem(
+                service,
+                mapper.readTree("{}"),
+                mapper.readTree("{\"school_rating_delta\":0}"),
+                HttpStatus.UNPROCESSABLE_ENTITY);
+        assertProblem(
+                service,
+                mapper.readTree("{}"),
+                mapper.readTree("{\"school_rating_delta\":20}"),
+                HttpStatus.UNPROCESSABLE_ENTITY);
+        assertProblem(
+                service,
+                mapper.readTree("{\"max_bedrooms\":\"4\"}"),
+                mapper.readTree("{\"school_rating_delta\":1}"),
                 HttpStatus.UNPROCESSABLE_ENTITY);
 
         assertThat(calls).isEmpty();
     }
 
     @Test
-    void rejectsModelResponseWithWrongNumberOfPrices() {
-        predictions = List.of(new BigDecimal("420000"));
-
+    void rejectsModelResponseWithWrongCountOrNullPrediction() throws Exception {
+        predictions = List.of(new BigDecimal("10"));
+        PriceImpactService service = service(List.of(property(1, 3, "8")), 20);
         assertProblem(
-                baseline(),
-                mapper.createObjectNode().put("school_rating", 8.5),
+                service,
+                mapper.readTree("{}"),
+                mapper.readTree("{\"school_rating_delta\":1}"),
+                HttpStatus.BAD_GATEWAY);
+
+        predictions = java.util.Arrays.asList(new BigDecimal("10"), null);
+        assertProblem(
+                service,
+                mapper.readTree("{}"),
+                mapper.readTree("{\"school_rating_delta\":1}"),
                 HttpStatus.BAD_GATEWAY);
     }
 
-    @Test
-    void rejectsModelResponseContainingNullPrice() {
-        predictions = Arrays.asList(new BigDecimal("420000"), null);
-
-        assertProblem(
-                baseline(),
-                mapper.createObjectNode().put("school_rating", 8.5),
-                HttpStatus.BAD_GATEWAY);
+    private PriceImpactService service(List<PropertyRecord> properties, int batchLimit) {
+        PropertyDataset dataset = () -> properties;
+        MarketSettings settings =
+                new MarketSettings("data.csv", "http://localhost", 5, 100, batchLimit);
+        return new PriceImpactService(dataset, new SegmentFilterParser(), client, settings);
     }
 
-    private ObjectNode baseline() {
-        return mapper.createObjectNode()
-                .put("square_footage", 1550)
-                .put("bedrooms", 3)
-                .put("bathrooms", new BigDecimal("2.0"))
-                .put("year_built", 1997)
-                .put("lot_size", 6800)
-                .put("distance_to_city_center", new BigDecimal("4.1"))
-                .put("school_rating", new BigDecimal("7.6"));
+    private PropertyRecord property(long id, int bedrooms, String schoolRating) {
+        return property(id, bedrooms, schoolRating, 1000 + (int) id * 100);
     }
 
-    private ObjectNode validChanges() {
-        return mapper.createObjectNode().put("square_footage", 1800);
+    private PropertyRecord property(long id, int bedrooms, String schoolRating, int squareFootage) {
+        return new PropertyRecord(
+                id,
+                squareFootage,
+                bedrooms,
+                new BigDecimal("2.0"),
+                1997,
+                6800,
+                new BigDecimal("4.1"),
+                new BigDecimal(schoolRating),
+                new BigDecimal("200000"));
     }
 
-    private PriceImpactResponse.FeatureChange change(String from, String to) {
-        return new PriceImpactResponse.FeatureChange(new BigDecimal(from), new BigDecimal(to));
+    private HousingFeatures features(int squareFootage, int bedrooms, String schoolRating) {
+        return new HousingFeatures(
+                squareFootage,
+                bedrooms,
+                new BigDecimal("2.0"),
+                1997,
+                6800,
+                new BigDecimal("4.1"),
+                new BigDecimal(schoolRating));
     }
 
-    private void assertProblem(JsonNode baseline, JsonNode changes, HttpStatus expectedStatus) {
-        assertThatThrownBy(() -> service.compare(baseline, changes))
+    private void assertProblem(
+            PriceImpactService service,
+            JsonNode filters,
+            JsonNode adjustments,
+            HttpStatus expectedStatus) {
+        assertThatThrownBy(() -> service.compare(filters, adjustments))
                 .isInstanceOfSatisfying(
                         ApiException.class,
                         problem -> assertThat(problem.status()).isEqualTo(expectedStatus));

@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 import { PropertyTable } from "./property-table";
 import type { PropertyRecord } from "@/lib/market-analysis/schemas";
 
@@ -20,7 +20,6 @@ function property(id: number, price: number): PropertyRecord {
 
 test("applies inclusive segment bounds and local text search", async () => {
   const user = userEvent.setup();
-  const onSelect = vi.fn();
   render(
     <PropertyTable
       properties={[
@@ -29,7 +28,6 @@ test("applies inclusive segment bounds and local text search", async () => {
         property(3, 1000000),
       ]}
       filters={{ min_price: 200000 }}
-      onSelect={onSelect}
     />,
   );
 
@@ -53,7 +51,6 @@ test("sorts numeric prices and marks the active sort direction", async () => {
         property(3, 200000),
       ]}
       filters={{}}
-      onSelect={vi.fn()}
     />,
   );
 
@@ -77,7 +74,6 @@ test("paginates eleven matching rows and resets pagination after a search", asyn
         property(index + 1, 200000 + index),
       )}
       filters={{}}
-      onSelect={vi.fn()}
     />,
   );
 
@@ -100,26 +96,9 @@ test("paginates eleven matching rows and resets pagination after a search", asyn
   ).toHaveTextContent("Property 11");
 });
 
-test("selects a row and explains an empty segment", async () => {
-  const user = userEvent.setup();
-  const onSelect = vi.fn();
+test("explains when no source rows match the current segment", () => {
   const rows = [property(1, 200000), property(2, 250000)];
-  const { rerender } = render(
-    <PropertyTable properties={rows} filters={{}} onSelect={onSelect} />,
-  );
-
-  await user.click(
-    screen.getByRole("button", { name: "Compare price impact for property 2" }),
-  );
-  expect(onSelect).toHaveBeenCalledWith(rows[1]);
-
-  rerender(
-    <PropertyTable
-      properties={rows}
-      filters={{ min_price: 999999 }}
-      onSelect={onSelect}
-    />,
-  );
+  render(<PropertyTable properties={rows} filters={{ min_price: 999999 }} />);
   expect(
     screen.getByText("No properties match the current table filters."),
   ).toBeInTheDocument();

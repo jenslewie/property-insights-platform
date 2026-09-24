@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 import { ExportControls } from "./export-controls";
 
+const filename = `property-market-analysis_${"a".repeat(8)}`;
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -26,20 +28,29 @@ test("exports the active segment as CSV and revokes the temporary object URL", a
   const downloads = mockDownload();
   const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
     new Response("id,price\n1,200000\n", {
-      headers: { "Content-Type": "text/csv; charset=UTF-8" },
+      headers: {
+        "Content-Type": "text/csv; charset=UTF-8",
+        "Content-Disposition": `attachment; filename=${filename}.csv`,
+      },
     }),
   );
-  render(<ExportControls filters={{ min_price: 200000 }} matchedCount={4} />);
+  render(
+    <ExportControls
+      filters={{ min_price: 200000 }}
+      scenario={{ schoolRatingDelta: 1 }}
+      matchedCount={4}
+    />,
+  );
 
   await user.click(screen.getByRole("button", { name: "Export segment CSV" }));
 
   expect(fetchMock).toHaveBeenCalledWith(
-    "/api/market-analysis/export?type=data&format=csv&min_price=200000",
+    "/api/market-analysis/export?format=csv&min_price=200000&scenario_school_rating_delta=1",
   );
   await waitFor(() => {
     expect(downloads.createObjectURL).toHaveBeenCalledTimes(1);
     expect(downloads.clicks).toEqual([
-      { href: "blob:sample-export", filename: "properties.csv" },
+      { href: "blob:sample-export", filename: `${filename}.csv` },
     ]);
     expect(downloads.revokeObjectURL).toHaveBeenCalledWith(
       "blob:sample-export",
@@ -50,12 +61,15 @@ test("exports the active segment as CSV and revokes the temporary object URL", a
   ).toBeInTheDocument();
 });
 
-test("exports a PDF with its fixed filename", async () => {
+test("exports a PDF with the filename provided by Java", async () => {
   const user = userEvent.setup();
   const downloads = mockDownload();
   const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
     new Response(new Uint8Array([37, 80, 68, 70]), {
-      headers: { "Content-Type": "application/pdf" },
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename=${filename}.pdf`,
+      },
     }),
   );
   render(<ExportControls filters={{ max_price: 500000 }} matchedCount={2} />);
@@ -63,16 +77,74 @@ test("exports a PDF with its fixed filename", async () => {
   await user.click(screen.getByRole("button", { name: "Export segment PDF" }));
 
   expect(fetchMock).toHaveBeenCalledWith(
-    "/api/market-analysis/export?type=report&format=pdf&max_price=500000",
+    "/api/market-analysis/export?format=pdf&max_price=500000",
   );
   await waitFor(() => {
     expect(downloads.clicks).toEqual([
-      { href: "blob:sample-export", filename: "market-report.pdf" },
+      { href: "blob:sample-export", filename: `${filename}.pdf` },
     ]);
     expect(downloads.revokeObjectURL).toHaveBeenCalledWith(
       "blob:sample-export",
     );
   });
+});
+
+test("a delayed PDF export reuses the same applied conditions as the earlier CSV", async () => {
+  const user = userEvent.setup();
+  const downloads = mockDownload();
+  let resolvePdf: ((response: Response) => void) | undefined;
+  const fetchMock = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation((input) => {
+      if (String(input).includes("format=pdf")) {
+        return new Promise((resolve) => {
+          resolvePdf = resolve;
+        });
+      }
+      return Promise.resolve(
+        new Response("id,price\n", {
+          headers: {
+            "Content-Type": "text/csv",
+            "Content-Disposition": `attachment; filename=${filename}.csv`,
+          },
+        }),
+      );
+    });
+  render(
+    <ExportControls
+      filters={{ min_bedrooms: 3 }}
+      scenario={{ schoolRatingDelta: 1 }}
+      matchedCount={4}
+    />,
+  );
+
+  await user.click(screen.getByRole("button", { name: "Export segment CSV" }));
+  await waitFor(() => expect(downloads.clicks).toHaveLength(1));
+  await user.click(screen.getByRole("button", { name: "Export segment PDF" }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  resolvePdf?.(
+    new Response(new Uint8Array([37, 80, 68, 70]), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename=${filename}.pdf`,
+      },
+    }),
+  );
+  await waitFor(() => expect(downloads.clicks).toHaveLength(2));
+
+  const csvQuery = new URLSearchParams(
+    String(fetchMock.mock.calls[0][0]).split("?")[1],
+  );
+  const pdfQuery = new URLSearchParams(
+    String(fetchMock.mock.calls[1][0]).split("?")[1],
+  );
+  csvQuery.delete("format");
+  pdfQuery.delete("format");
+  expect([...csvQuery.entries()]).toEqual([...pdfQuery.entries()]);
+  expect(downloads.clicks.map((item) => item.filename)).toEqual([
+    `${filename}.csv`,
+    `${filename}.pdf`,
+  ]);
 });
 
 test("disables both exports when the segment has no matches", () => {
@@ -138,7 +210,12 @@ test("prevents duplicate requests while one export is loading", async () => {
   ).toBeDisabled();
   expect(fetchMock).toHaveBeenCalledTimes(1);
   resolveFetch?.(
-    new Response("id,price", { headers: { "Content-Type": "text/csv" } }),
+    new Response("id,price", {
+      headers: {
+        "Content-Type": "text/csv",
+        "Content-Disposition": `attachment; filename=${filename}.csv`,
+      },
+    }),
   );
   await waitFor(() => expect(downloads.revokeObjectURL).toHaveBeenCalled());
 });

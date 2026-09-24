@@ -57,6 +57,25 @@ test("loads server aggregates using filters and chart dimension from the URL", a
   expect(screen.getByText(/0 matching properties/i)).toBeInTheDocument();
 });
 
+test("restores the applied scenario from a direct URL", async () => {
+  render(
+    await MarketAnalysisPage({
+      searchParams: Promise.resolve({
+        min_bedrooms: "3",
+        scenario_school_rating_delta: "1.0",
+        chart_dimension: "bedrooms",
+      }),
+    }),
+  );
+
+  expect(getMarketDashboard).toHaveBeenCalledWith(
+    { min_bedrooms: 3 },
+    "bedrooms",
+  );
+  expect(screen.getByLabelText("School rating change")).toHaveValue(1);
+  expect(screen.getByLabelText("Square footage change (%)")).toHaveValue(null);
+});
+
 test("shows invalid deep links without requesting the Java service", async () => {
   vi.mocked(getMarketDashboard).mockClear();
 

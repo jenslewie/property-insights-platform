@@ -1,21 +1,15 @@
 package com.propertyinsights.marketanalysis.impact;
 
 import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 public record PriceImpactResponse(
-        HousingFeatures baseline,
-        Map<String, FeatureChange> changes,
-        BigDecimal baselinePredictedPrice,
-        BigDecimal scenarioPredictedPrice,
-        BigDecimal absoluteChange,
-        BigDecimal percentageChange) {
+        int propertyCount, PriceMetrics baseline, PriceMetrics scenario, ImpactMetrics impact) {
 
-    public PriceImpactResponse {
-        changes = Collections.unmodifiableMap(new LinkedHashMap<>(changes));
-    }
+    public record PriceMetrics(
+            BigDecimal mean, BigDecimal median, BigDecimal minimum, BigDecimal maximum) {}
 
-    public record FeatureChange(BigDecimal from, BigDecimal to) {}
+    public record ImpactMetrics(
+            MetricImpact mean, MetricImpact median, MetricImpact minimum, MetricImpact maximum) {}
+
+    public record MetricImpact(BigDecimal absoluteChange, BigDecimal percentageChange) {}
 }

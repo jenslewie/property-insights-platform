@@ -34,7 +34,7 @@ class OpenApiDocumentationTest {
         mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.info.title").value("Market Analysis API"))
-                .andExpect(jsonPath("$.paths['/api/v1/properties/statistics/summary']").exists());
+                .andExpect(jsonPath("$.paths['/api/v1/market/summary']").exists());
 
         mvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
     }
@@ -44,28 +44,27 @@ class OpenApiDocumentationTest {
         mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(
-                        jsonPath("$.paths['/api/v1/properties/price-impact'].post.parameters")
+                        jsonPath("$.paths['/api/v1/market/price-impact'].post.parameters")
                                 .doesNotExist())
                 .andExpect(
-                        jsonPath(
-                                        "$.paths['/api/v1/properties/price-impact'].post.requestBody.required")
+                        jsonPath("$.paths['/api/v1/market/price-impact'].post.requestBody.required")
                                 .value(true))
                 .andExpect(
                         jsonPath(
-                                        "$.paths['/api/v1/properties/price-impact'].post.requestBody.content['application/json'].schema.type")
+                                        "$.paths['/api/v1/market/price-impact'].post.requestBody.content['application/json'].schema.type")
                                 .value("object"))
                 .andExpect(
                         jsonPath(
-                                        "$.paths['/api/v1/properties/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.baseline.square_footage")
-                                .value(1550))
+                                        "$.paths['/api/v1/market/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.filters.min_bedrooms")
+                                .value(3))
                 .andExpect(
                         jsonPath(
-                                        "$.paths['/api/v1/properties/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.changes.square_footage")
-                                .value(1800))
+                                        "$.paths['/api/v1/market/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.scenario.adjustments.school_rating_delta")
+                                .value(1))
                 .andExpect(
                         jsonPath(
-                                        "$.paths['/api/v1/properties/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.changes.school_rating")
-                                .value(8.5));
+                                        "$.paths['/api/v1/market/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.scenario.adjustments.square_footage_percent")
+                                .value(5));
     }
 
     @Test
@@ -78,9 +77,9 @@ class OpenApiDocumentationTest {
     @ParameterizedTest
     @ValueSource(
             strings = {
-                "/api/v1/properties/statistics/summary",
-                "/api/v1/properties/statistics/distributions/{dimension}",
-                "/api/v1/properties/export"
+                "/api/v1/market/summary",
+                "/api/v1/market/distributions/{dimension}",
+                "/api/v1/market/export"
             })
     void documentsAllFiltersWithRunnableExamples(String path) throws Exception {
         JsonNode document = openApiDocument();
@@ -106,7 +105,7 @@ class OpenApiDocumentationTest {
         var names = new ArrayList<String>();
         var exampleRequest = get(path.replace("{dimension}", "price"));
         if (path.endsWith("/export")) {
-            exampleRequest.param("type", "data").param("format", "csv");
+            exampleRequest.param("format", "csv");
         }
 
         for (JsonNode parameter : operation.path("parameters")) {
@@ -114,7 +113,9 @@ class OpenApiDocumentationTest {
                 continue;
             }
             String name = parameter.path("name").asText();
-            if (name.equals("type") || name.equals("format")) {
+            if (name.equals("format")
+                    || name.equals("scenario_school_rating_delta")
+                    || name.equals("scenario_square_footage_percent")) {
                 continue;
             }
             assertThat(name).matches("(min|max)_.+");
@@ -155,7 +156,7 @@ class OpenApiDocumentationTest {
         JsonNode document = openApiDocument();
         JsonNode parameters =
                 document.path("paths")
-                        .path("/api/v1/properties/statistics/distributions/{dimension}")
+                        .path("/api/v1/market/distributions/{dimension}")
                         .path("get")
                         .path("parameters");
         var pathParameters = new ArrayList<JsonNode>();
@@ -183,6 +184,31 @@ class OpenApiDocumentationTest {
                                 .toList());
     }
 
+    @Test
+    void documentsScenarioAdjustmentsForBothExportFormats() throws Exception {
+        JsonNode parameters =
+                openApiDocument()
+                        .path("paths")
+                        .path("/api/v1/market/export")
+                        .path("get")
+                        .path("parameters");
+        for (String name :
+                java.util.List.of(
+                        "scenario_school_rating_delta", "scenario_square_footage_percent")) {
+            JsonNode parameter = null;
+            for (JsonNode candidate : parameters) {
+                if (candidate.path("name").asText().equals(name)) {
+                    parameter = candidate;
+                    break;
+                }
+            }
+            assertThat(parameter).isNotNull();
+            assertThat(parameter.path("in").asText()).isEqualTo("query");
+            assertThat(parameter.path("required").asBoolean()).isFalse();
+            assertThat(parameter.path("schema").path("type").asText()).isEqualTo("number");
+        }
+    }
+
     private JsonNode openApiDocument() throws Exception {
         return objectMapper.readTree(
                 mvc.perform(get("/v3/api-docs"))
@@ -206,7 +232,24 @@ class OpenApiDocumentationTest {
 
         assertThat(propertiesTags).hasSize(1);
         assertThat(propertiesTags.getFirst().path("description").asText())
-                .isEqualTo("Property data and market analysis operations.");
+                .isEqualTo("Property data operations.");
+    }
+
+    @Test
+    void definesOneMarketTagWithSharedDescription() throws Exception {
+        var marketTags = new ArrayList<JsonNode>();
+        openApiDocument()
+                .path("tags")
+                .forEach(
+                        tag -> {
+                            if (tag.path("name").asText().equals("Market")) {
+                                marketTags.add(tag);
+                            }
+                        });
+
+        assertThat(marketTags).hasSize(1);
+        assertThat(marketTags.getFirst().path("description").asText())
+                .isEqualTo("Market statistics and scenario analysis operations.");
     }
 
     @Test
@@ -216,17 +259,14 @@ class OpenApiDocumentationTest {
                 .andExpect(
                         jsonPath("$.paths['/api/v1/properties'].get.tags[0]").value("Properties"))
                 .andExpect(
-                        jsonPath("$.paths['/api/v1/properties/statistics/summary'].get.tags[0]")
-                                .value("Properties"))
+                        jsonPath("$.paths['/api/v1/market/summary'].get.tags[0]").value("Market"))
                 .andExpect(
-                        jsonPath(
-                                        "$.paths['/api/v1/properties/statistics/distributions/{dimension}'].get.tags[0]")
-                                .value("Properties"))
+                        jsonPath("$.paths['/api/v1/market/distributions/{dimension}'].get.tags[0]")
+                                .value("Market"))
                 .andExpect(
-                        jsonPath("$.paths['/api/v1/properties/price-impact'].post.tags[0]")
-                                .value("Properties"))
+                        jsonPath("$.paths['/api/v1/market/price-impact'].post.tags[0]")
+                                .value("Market"))
                 .andExpect(
-                        jsonPath("$.paths['/api/v1/properties/export'].get.tags[0]")
-                                .value("Properties"));
+                        jsonPath("$.paths['/api/v1/market/export'].get.tags[0]").value("Market"));
     }
 }

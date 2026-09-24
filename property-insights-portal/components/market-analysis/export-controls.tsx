@@ -1,48 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import { filterSearchParams } from "@/lib/market-analysis/filters";
+import {
+  conditionSearchParams,
+  type MarketScenario,
+} from "@/lib/market-analysis/filters";
 import type { SegmentFilters } from "@/lib/market-analysis/fields";
 
 type ExportFormat = "csv" | "pdf";
 
 type Props = {
   filters: SegmentFilters;
+  scenario?: MarketScenario;
   matchedCount: number;
 };
 
 const exportOptions: Record<
   ExportFormat,
-  {
-    type: "data" | "report";
-    mediaType: string;
-    filename: string;
-    label: string;
-  }
+  { mediaType: string; label: string }
 > = {
   csv: {
-    type: "data",
     mediaType: "text/csv",
-    filename: "properties.csv",
     label: "CSV",
   },
   pdf: {
-    type: "report",
     mediaType: "application/pdf",
-    filename: "market-report.pdf",
     label: "PDF",
   },
 };
 
-export function ExportControls({ filters, matchedCount }: Props) {
+function safeFilename(
+  value: string | null,
+  format: ExportFormat,
+): string | null {
+  if (!value) return null;
+  const match =
+    /^attachment;\s*filename=(property-market-analysis_[a-f0-9]{8}\.(csv|pdf))$/i.exec(
+      value,
+    );
+  return match && match[2] === format ? match[1] : null;
+}
+
+export function ExportControls({ filters, scenario, matchedCount }: Props) {
   const [pending, setPending] = useState<ExportFormat | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function download(format: ExportFormat) {
     if (pending || matchedCount === 0) return;
     const option = exportOptions[format];
-    const query = new URLSearchParams({ type: option.type, format });
-    filterSearchParams(filters).forEach((value, key) =>
+    const query = new URLSearchParams({ format });
+    conditionSearchParams(filters, scenario).forEach((value, key) =>
       query.append(key, value),
     );
 
@@ -71,10 +78,19 @@ export function ExportControls({ filters, matchedCount }: Props) {
         return;
       }
 
+      const filename = safeFilename(
+        response.headers.get("Content-Disposition"),
+        format,
+      );
+      if (!filename) {
+        setError("The export could not be downloaded.");
+        return;
+      }
+
       const objectUrl = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
       link.href = objectUrl;
-      link.download = option.filename;
+      link.download = filename;
       document.body.append(link);
       try {
         link.click();

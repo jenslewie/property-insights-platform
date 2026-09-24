@@ -28,7 +28,7 @@ class MarketSummaryApiTest {
 
     @Test
     void returnsUnfilteredSummary() throws Exception {
-        mockMvc.perform(get("/api/v1/properties/statistics/summary"))
+        mockMvc.perform(get("/api/v1/market/summary"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total_count").value(50))
                 .andExpect(jsonPath("$.matched_count").value(50))
@@ -39,23 +39,33 @@ class MarketSummaryApiTest {
     }
 
     @Test
+    void zeroMatchSummaryKeepsNullHistoricalStatistics() throws Exception {
+        mockMvc.perform(get("/api/v1/market/summary").param("min_price", "999999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total_count").value(50))
+                .andExpect(jsonPath("$.matched_count").value(0))
+                .andExpect(jsonPath("$.price.mean").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.price.median").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.price.minimum").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.price.maximum").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
     void invalidFiltersReturnProblemDetails() throws Exception {
         assertBadFilter(
-                get("/api/v1/properties/statistics/summary").param("min_bedrooms", "2.5"),
+                get("/api/v1/market/summary").param("min_bedrooms", "2.5"),
                 "Invalid or unsupported filter parameter.");
         assertBadFilter(
-                get("/api/v1/properties/statistics/summary").param("min_price", "1", "2"),
+                get("/api/v1/market/summary").param("min_price", "1", "2"),
                 "Invalid or unsupported filter parameter.");
         assertBadFilter(
-                get("/api/v1/properties/statistics/summary").param("min_price", "NaN"),
+                get("/api/v1/market/summary").param("min_price", "NaN"),
                 "Invalid or unsupported filter parameter.");
         assertBadFilter(
-                get("/api/v1/properties/statistics/summary").param("sort", "price"),
+                get("/api/v1/market/summary").param("sort", "price"),
                 "Invalid or unsupported filter parameter.");
         assertBadFilter(
-                get("/api/v1/properties/statistics/summary")
-                        .param("min_price", "300")
-                        .param("max_price", "200"),
+                get("/api/v1/market/summary").param("min_price", "300").param("max_price", "200"),
                 "Minimum filter value must not exceed maximum.");
     }
 
@@ -85,7 +95,7 @@ class MarketSummaryApiTest {
                                 .string(HttpHeaders.ALLOW, "GET"));
 
         mockMvc.perform(
-                        post("/api/v1/properties/price-impact")
+                        post("/api/v1/market/price-impact")
                                 .contentType(MediaType.TEXT_PLAIN)
                                 .content("invalid"))
                 .andExpect(status().isUnsupportedMediaType())

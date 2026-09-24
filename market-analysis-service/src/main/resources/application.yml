@@ -17,3 +17,4 @@ market:
   model-url: ${HOUSE_PRICE_MODEL_URL:http://localhost:9003}
   model-timeout-seconds: ${HOUSE_PRICE_MODEL_TIMEOUT_SECONDS:5}
   cache-maximum-size: ${MARKET_CACHE_MAXIMUM_SIZE:500}
+  model-batch-prediction-limit: ${BATCH_PREDICTION_LIMIT:20}

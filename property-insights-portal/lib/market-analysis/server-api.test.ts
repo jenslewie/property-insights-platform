@@ -5,7 +5,7 @@ function fixtureFor(url: string) {
   if (url.endsWith("/api/v1/properties")) {
     return { count: 0, properties: [] };
   }
-  if (url.includes("/statistics/summary")) {
+  if (url.includes("/api/v1/market/summary")) {
     return {
       total_count: 0,
       matched_count: 0,
@@ -31,9 +31,9 @@ function mockResponses(
     const url = String(input);
     const responseKey = url.endsWith("/api/v1/properties")
       ? "properties"
-      : url.includes("/statistics/summary")
+      : url.includes("/api/v1/market/summary")
         ? "summary"
-        : url.includes("/distributions/price")
+        : url.includes("/api/v1/market/distributions/price")
           ? "priceDistribution"
           : "featureDistribution";
     return Response.json(overrides[responseKey] ?? fixtureFor(url));
@@ -61,15 +61,15 @@ test("loads the list and filtered aggregate responses from Java", async () => {
     { cache: "no-store" },
   );
   expect(fetchMock).toHaveBeenCalledWith(
-    "http://market:9002/api/v1/properties/statistics/summary?min_price=200000",
+    "http://market:9002/api/v1/market/summary?min_price=200000",
     { cache: "no-store" },
   );
   expect(fetchMock).toHaveBeenCalledWith(
-    "http://market:9002/api/v1/properties/statistics/distributions/price?min_price=200000",
+    "http://market:9002/api/v1/market/distributions/price?min_price=200000",
     { cache: "no-store" },
   );
   expect(fetchMock).toHaveBeenCalledWith(
-    "http://market:9002/api/v1/properties/statistics/distributions/bedrooms?min_price=200000",
+    "http://market:9002/api/v1/market/distributions/bedrooms?min_price=200000",
     { cache: "no-store" },
   );
 });

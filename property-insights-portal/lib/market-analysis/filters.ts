@@ -8,8 +8,18 @@ import {
 } from "./fields";
 
 export type MarketQueryResult =
-  | { ok: true; filters: SegmentFilters; dimension: FeatureDimension }
+  | {
+      ok: true;
+      filters: SegmentFilters;
+      scenario: MarketScenario | undefined;
+      dimension: FeatureDimension;
+    }
   | { ok: false; error: string };
+
+export type MarketScenario = {
+  schoolRatingDelta?: number;
+  squareFootagePercent?: number;
+};
 
 const integerFields = new Set<MarketField>([
   "square_footage",
@@ -23,6 +33,8 @@ export function parseMarketQuery(
   query: Record<string, string | string[] | undefined>,
 ): MarketQueryResult {
   const filters: SegmentFilters = {};
+  const scenario: MarketScenario = {};
+  let scenarioWasSpecified = false;
   let dimension: FeatureDimension = "square_footage";
 
   for (const [key, raw] of Object.entries(query)) {
@@ -36,6 +48,28 @@ export function parseMarketQuery(
         return { ok: false, error: "Unsupported feature distribution." };
       }
       dimension = raw as FeatureDimension;
+      continue;
+    }
+
+    if (
+      key === "scenario_school_rating_delta" ||
+      key === "scenario_square_footage_percent"
+    ) {
+      scenarioWasSpecified = true;
+      if (!decimalPattern.test(raw.trim())) {
+        return { ok: false, error: "Invalid market scenario parameter." };
+      }
+      const value = Number(raw.trim());
+      if (!Number.isFinite(value)) {
+        return { ok: false, error: "Invalid market scenario parameter." };
+      }
+      if (value !== 0) {
+        if (key === "scenario_school_rating_delta") {
+          scenario.schoolRatingDelta = value;
+        } else {
+          scenario.squareFootagePercent = value;
+        }
+      }
       continue;
     }
 
@@ -58,6 +92,13 @@ export function parseMarketQuery(
     filters[key as keyof SegmentFilters] = value;
   }
 
+  if (scenarioWasSpecified && Object.keys(scenario).length === 0) {
+    return {
+      ok: false,
+      error: "A scenario must make an effective adjustment.",
+    };
+  }
+
   for (const field of marketFields) {
     const minimum = filters[`min_${field}`];
     const maximum = filters[`max_${field}`];
@@ -69,7 +110,12 @@ export function parseMarketQuery(
     }
   }
 
-  return { ok: true, filters, dimension };
+  return {
+    ok: true,
+    filters,
+    scenario: Object.keys(scenario).length === 0 ? undefined : scenario,
+    dimension,
+  };
 }
 
 export function filterSearchParams(filters: SegmentFilters): URLSearchParams {
@@ -87,9 +133,30 @@ export function filterSearchParams(filters: SegmentFilters): URLSearchParams {
 export function dashboardSearchParams(
   filters: SegmentFilters,
   dimension: FeatureDimension,
+  scenario?: MarketScenario,
+): URLSearchParams {
+  const params = conditionSearchParams(filters, scenario);
+  params.set("chart_dimension", dimension);
+  return params;
+}
+
+export function conditionSearchParams(
+  filters: SegmentFilters,
+  scenario?: MarketScenario,
 ): URLSearchParams {
   const params = filterSearchParams(filters);
-  params.set("chart_dimension", dimension);
+  if (scenario?.schoolRatingDelta !== undefined) {
+    params.set(
+      "scenario_school_rating_delta",
+      String(scenario.schoolRatingDelta),
+    );
+  }
+  if (scenario?.squareFootagePercent !== undefined) {
+    params.set(
+      "scenario_square_footage_percent",
+      String(scenario.squareFootagePercent),
+    );
+  }
   return params;
 }
 

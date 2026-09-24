@@ -5,7 +5,11 @@ import org.springframework.util.StringUtils;
 
 @ConfigurationProperties(prefix = "market")
 public record MarketSettings(
-        String datasetPath, String modelUrl, int modelTimeoutSeconds, int cacheMaximumSize) {
+        String datasetPath,
+        String modelUrl,
+        int modelTimeoutSeconds,
+        int cacheMaximumSize,
+        int modelBatchPredictionLimit) {
     public MarketSettings {
         if (!StringUtils.hasText(datasetPath)) {
             throw new IllegalArgumentException("market.dataset-path must not be blank.");
@@ -18,6 +22,10 @@ public record MarketSettings(
         }
         if (cacheMaximumSize <= 0) {
             throw new IllegalArgumentException("market.cache-maximum-size must be positive.");
+        }
+        if (modelBatchPredictionLimit < 2) {
+            throw new IllegalArgumentException(
+                    "market.model-batch-prediction-limit must be at least 2.");
         }
     }
 }

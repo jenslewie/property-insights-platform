@@ -73,10 +73,10 @@ test("renders historical price cards, two fixed-bucket charts, and accessible da
   );
 
   for (const label of [
-    "Mean sample price",
-    "Median sample price",
-    "Minimum sample price",
-    "Maximum sample price",
+    "Mean historical price",
+    "Median historical price",
+    "Minimum historical price",
+    "Maximum historical price",
   ]) {
     expect(screen.getByText(label)).toBeInTheDocument();
   }

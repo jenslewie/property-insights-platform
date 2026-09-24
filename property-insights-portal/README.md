@@ -2,96 +2,92 @@
 
 ## Overview
 
-The Next.js portal supports single-property and batch value estimates, market segment
-analysis, price-impact scenarios, and filtered CSV/PDF exports. The market analysis page
-uses the Java `market-analysis-service` API for summary statistics and distributions;
-the portal does not recalculate those aggregates from model predictions.
+The Next.js portal supports property estimates and market-segment analysis. For Market Analysis,
+the Java service is the authority for historical aggregates, model predictions, and export files.
+The source is a static CSV sample without geographic or transaction-date fields; it does not
+support location comparisons or time trends. The repository does not document all feature units
+or the school-rating scale.
 
-The market sample contains property features and historical sample prices, but no
-geography or transaction dates. It cannot support location comparisons or time trends.
-The repository does not document all feature units or the school-rating scale, so read
-the values using the supplied dataset's conventions.
+## Market Analysis
 
-## Market analysis
+Open `/market-analysis` to filter the sample using inclusive `min_<field>` and `max_<field>`
+bounds. The page reports historical sample-price mean, median, minimum, and maximum alongside
+price and feature distributions. These statistics use the CSV `price` values.
 
-Open `/market-analysis` to explore inclusive minimum/maximum filters for square footage,
-bedrooms, bathrooms, year built, lot size, distance to city center, school rating, and
-price. Active filters and the selected feature-distribution dimension are shareable in
-the URL. The page shows historical sample-price mean, median, minimum, and maximum, plus
-price and feature distributions with accessible bucket data.
+The what-if form applies `school_rating_delta` and/or `square_footage_percent` to every property
+in the filtered segment. It shows predicted baseline, scenario, and impact mean, median, minimum,
+and maximum. These are model predictions and remain separate from historical dashboard values.
+An empty segment disables scenario application. Filter and scenario controls edit drafts and
+commit their conditions to the URL when applied. The URL supports direct links and browser
+back/forward restoration; chart dimension is stored separately. Table search, sorting, and
+pagination are local display controls and do not change the applied segment.
 
-The property table applies those same segment bounds locally. Its text search, numeric
-sort, and pagination only change the visible table rows. Price-impact scenarios compare
-a selected property's seven features with edited values; their prices are model
-predictions, separate from the historical sample statistics. CSV and PDF exports use the
-active segment bounds. Table search, sort, and pagination are not included in exports.
+The portal sends a JSON body like this to its same-origin price-impact handler:
 
-The portal's same-origin handlers are:
+```json
+{
+  "filters": { "min_bedrooms": 3 },
+  "scenario": {
+    "adjustments": {
+      "school_rating_delta": 1,
+      "square_footage_percent": 5
+    }
+  }
+}
+```
 
-| Portal route                                             | Purpose                                               |
-| -------------------------------------------------------- | ----------------------------------------------------- |
-| `POST /api/market-analysis/price-impact`                 | Validates and forwards `{baseline, changes}` to Java. |
-| `GET /api/market-analysis/export?type=data&format=csv`   | Streams filtered property CSV.                        |
-| `GET /api/market-analysis/export?type=report&format=pdf` | Streams the filtered market report PDF.               |
+### Routes
 
-The Java service endpoints used by the portal are:
+| Portal route                                 | Purpose                                           |
+| -------------------------------------------- | ------------------------------------------------- |
+| `POST /api/market-analysis/price-impact`     | Validate and forward market filters and scenario. |
+| `GET /api/market-analysis/export?format=csv` | Stream filtered source rows as CSV.               |
+| `GET /api/market-analysis/export?format=pdf` | Stream the complete filtered market report.       |
 
-| Java route                                                    | Purpose                                                           |
-| ------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `GET /api/v1/properties`                                      | Full sample property list for the local table.                    |
-| `GET /api/v1/properties/statistics/summary`                   | Filtered sample counts and historical price statistics.           |
-| `GET /api/v1/properties/statistics/distributions/{dimension}` | Filtered price or feature buckets.                                |
-| `POST /api/v1/properties/price-impact`                        | Predicted baseline and scenario prices for `{baseline, changes}`. |
-| `GET /api/v1/properties/export?type=data&format=csv`          | Filtered CSV attachment.                                          |
-| `GET /api/v1/properties/export?type=report&format=pdf`        | Filtered PDF report attachment.                                   |
+The Java API routes used by the portal are:
 
-The summary, distribution, and export routes accept the active numeric bounds as query
-parameters. Supported feature dimensions are `square_footage`, `bedrooms`, `bathrooms`,
-`year_built`, `lot_size`, `distance_to_city_center`, and `school_rating`.
+| Java route                                     | Purpose                                           |
+| ---------------------------------------------- | ------------------------------------------------- |
+| `GET /api/v1/properties`                       | Full, unfiltered source list for the local table. |
+| `GET /api/v1/market/summary`                   | Filtered historical summary.                      |
+| `GET /api/v1/market/distributions/{dimension}` | Filtered historical distributions.                |
+| `POST /api/v1/market/price-impact`             | Model-predicted market-level comparison.          |
+| `GET /api/v1/market/export?format=csv          | pdf`                                              | Filtered CSV or PDF attachment. |
+
+Both exports send the applied filters and optional scenario. The Java service derives an
+`analysisKey` from the complete SHA-256 condition fingerprint and uses its first 8 hex characters
+in the filename; the portal preserves that filename. CSV contains the filtered source rows with
+no synthetic scenario columns. PDF contains historical aggregates and all filtered rows, plus
+scenario assumptions and predicted metrics when a scenario is applied. Equivalent conditions use
+the same analysis key across CSV and PDF. The key associates conditions and is not an immutable
+model-output snapshot; an 8-character key can theoretically collide.
 
 ## Configuration
 
-| Setting                      | Local default           | Compose value                            | Purpose                                               |
-| ---------------------------- | ----------------------- | ---------------------------------------- | ----------------------------------------------------- |
-| `PROPERTY_ESTIMATOR_API_URL` | `http://localhost:9001` | `http://property-estimator-service:9001` | Base URL for estimate requests.                       |
-| `MARKET_ANALYSIS_API_URL`    | `http://localhost:9002` | `http://market-analysis-service:9002`    | Base URL for market analysis, scenarios, and exports. |
+| Setting                      | Local default           | Compose value                            | Purpose                          |
+| ---------------------------- | ----------------------- | ---------------------------------------- | -------------------------------- |
+| `PROPERTY_ESTIMATOR_API_URL` | `http://localhost:9001` | `http://property-estimator-service:9001` | Estimate API base URL.           |
+| `MARKET_ANALYSIS_API_URL`    | `http://localhost:9002` | `http://market-analysis-service:9002`    | Server-side market API base URL. |
 
-For local development, start the Java services and run the portal from
-`property-insights-portal/`:
+The portal reads `MARKET_ANALYSIS_API_URL` on the server. It does not expose the service URL to
+browser code.
+
+For local development, start the Java services and run from `property-insights-portal/`:
 
 ```bash
 npm run dev
 ```
 
-The default market-analysis URL is `http://localhost:9002`. Set
-`MARKET_ANALYSIS_API_URL` when the service uses a different address.
+## Docker Compose
 
-## Docker
-
-Run Compose commands from the repository root. Starting the portal waits for the
-estimator and market-analysis services to become healthy:
+From the repository root, start the portal and its healthy service dependencies:
 
 ```bash
 docker compose up --build property-insights-portal
 ```
 
-The portal is available at <http://localhost:9000>. The estimator API documentation is
-available at <http://localhost:9001/docs>; the market-analysis OpenAPI UI is at
-<http://localhost:9002/swagger-ui/index.html>.
-
-If the services are already running, start only the portal:
-
-```bash
-docker compose up -d --build --no-deps property-insights-portal
-```
-
-Stop only the portal container:
-
-```bash
-docker compose stop property-insights-portal
-```
-
-See the [root README](../README.md) for the full platform deployment command.
+The portal is available at <http://localhost:9000>. Stop only the portal with
+`docker compose stop property-insights-portal`.
 
 ## Verification
 
@@ -104,8 +100,4 @@ npm run format:check
 npm run build
 ```
 
-Validate the rendered Compose configuration from the repository root:
-
-```bash
-docker compose config
-```
+Check the resolved runtime configuration from the repository root with `docker compose config`.

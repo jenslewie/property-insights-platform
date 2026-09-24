@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { propertySchema } from "../property-schema";
-import { featureDimensions, marketFields } from "./fields";
+import { marketFields } from "./fields";
 
 const propertyRecordSchema = propertySchema
   .extend({
@@ -90,18 +90,35 @@ export const distributionSchema = z
     { message: "Distribution bucket counts must match matched_count." },
   );
 
-const featureChangeSchema = z
-  .object({ from: z.number().finite(), to: z.number().finite() })
+const predictedPriceMetricsSchema = z
+  .object({
+    mean: z.number().finite(),
+    median: z.number().finite(),
+    minimum: z.number().finite(),
+    maximum: z.number().finite(),
+  })
+  .strict();
+
+const impactMetricSchema = z
+  .object({
+    absolute_change: z.number().finite(),
+    percentage_change: z.number().finite().nullable(),
+  })
   .strict();
 
 export const priceImpactResponseSchema = z
   .object({
-    baseline: propertySchema.strict(),
-    changes: z.partialRecord(z.enum(featureDimensions), featureChangeSchema),
-    baseline_predicted_price: z.number().finite(),
-    scenario_predicted_price: z.number().finite(),
-    absolute_change: z.number().finite(),
-    percentage_change: z.number().finite().nullable(),
+    property_count: z.number().int().positive(),
+    baseline: predictedPriceMetricsSchema,
+    scenario: predictedPriceMetricsSchema,
+    impact: z
+      .object({
+        mean: impactMetricSchema,
+        median: impactMetricSchema,
+        minimum: impactMetricSchema,
+        maximum: impactMetricSchema,
+      })
+      .strict(),
   })
   .strict();
 

@@ -20,9 +20,7 @@ class DistributionApiTest {
 
     @Test
     void returnsStablePriceBucketsWithSnakeCaseFields() throws Exception {
-        mockMvc.perform(
-                        get("/api/v1/properties/statistics/distributions/price")
-                                .param("min_price", "200000"))
+        mockMvc.perform(get("/api/v1/market/distributions/price").param("min_price", "200000"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.dimension").value("price"))
                 .andExpect(jsonPath("$.matched_count").isNumber())
@@ -34,8 +32,18 @@ class DistributionApiTest {
     }
 
     @Test
+    void zeroMatchDistributionKeepsAllBucketsAtZero() throws Exception {
+        mockMvc.perform(get("/api/v1/market/distributions/price").param("min_price", "999999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.matched_count").value(0))
+                .andExpect(jsonPath("$.buckets.length()").value(5))
+                .andExpect(jsonPath("$.buckets[0].count").value(0))
+                .andExpect(jsonPath("$.buckets[0].average_price").value(nullValue()));
+    }
+
+    @Test
     void unknownDimensionReturnsProblemDetail() throws Exception {
-        mockMvc.perform(get("/api/v1/properties/statistics/distributions/unknown"))
+        mockMvc.perform(get("/api/v1/market/distributions/unknown"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(jsonPath("$.status").value(400))

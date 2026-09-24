@@ -23,7 +23,6 @@ type SortField = keyof PropertyRecord;
 type Props = {
   properties: PropertyRecord[];
   filters: SegmentFilters;
-  onSelect: (property: PropertyRecord) => void;
 };
 
 function searchableText(property: PropertyRecord): string {
@@ -39,7 +38,7 @@ export function PropertyTable(props: Props) {
   return <PropertyTableView key={filtersKey} {...props} />;
 }
 
-function PropertyTableView({ properties, filters, onSelect }: Props) {
+function PropertyTableView({ properties, filters }: Props) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<{
@@ -158,9 +157,6 @@ function PropertyTableView({ properties, filters, onSelect }: Props) {
                     </button>
                   </th>
                 ))}
-                <th className="whitespace-nowrap p-3" scope="col">
-                  Compare
-                </th>
               </tr>
             </thead>
             <tbody>
@@ -175,16 +171,6 @@ function PropertyTableView({ properties, filters, onSelect }: Props) {
                       {formatNumericValue(property[field])}
                     </td>
                   ))}
-                  <td className="whitespace-nowrap p-3">
-                    <button
-                      aria-label={`Compare price impact for property ${property.id}`}
-                      className="rounded-lg border border-blue-700 px-3 py-1.5 font-semibold text-blue-800 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
-                      onClick={() => onSelect(property)}
-                      type="button"
-                    >
-                      Compare price impact
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>

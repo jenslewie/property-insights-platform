@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/properties")
-@Tag(name = "Properties")
+@RequestMapping("/api/v1/market")
+@Tag(name = "Market")
 public final class MarketAnalysisController {
 
     private final SegmentFilterParser parser;
@@ -23,14 +23,14 @@ public final class MarketAnalysisController {
         this.service = service;
     }
 
-    @GetMapping("/statistics/summary")
+    @GetMapping("/summary")
     @SegmentFilterParameters
     public MarketSummary summary(
             @Parameter(hidden = true) @RequestParam MultiValueMap<String, String> params) {
         return service.summary(parser.parse(params));
     }
 
-    @GetMapping("/statistics/distributions/{dimension}")
+    @GetMapping("/distributions/{dimension}")
     @SegmentFilterParameters
     public DistributionResponse distribution(
             @Parameter(

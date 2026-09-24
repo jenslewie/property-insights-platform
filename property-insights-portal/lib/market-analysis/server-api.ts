@@ -31,15 +31,15 @@ export async function getMarketDashboard(
     await Promise.all([
       readJson(`${baseUrl}/api/v1/properties`, propertyListSchema),
       readJson(
-        `${baseUrl}/api/v1/properties/statistics/summary${suffix}`,
+        `${baseUrl}/api/v1/market/summary${suffix}`,
         marketSummarySchema,
       ),
       readJson(
-        `${baseUrl}/api/v1/properties/statistics/distributions/price${suffix}`,
+        `${baseUrl}/api/v1/market/distributions/price${suffix}`,
         distributionSchema,
       ),
       readJson(
-        `${baseUrl}/api/v1/properties/statistics/distributions/${dimension}${suffix}`,
+        `${baseUrl}/api/v1/market/distributions/${dimension}${suffix}`,
         distributionSchema,
       ),
     ]);

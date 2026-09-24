@@ -1,9 +1,15 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 import { MarketWorkspace } from "./market-workspace";
 import type { MarketDashboardData } from "@/lib/market-analysis/server-api";
 import type { PropertyRecord } from "@/lib/market-analysis/schemas";
+
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+}));
 
 function property(id: number, price: number): PropertyRecord {
   return {
@@ -49,90 +55,32 @@ function dashboard(
   };
 }
 
-test("keeps the selected baseline during local table search and clears it when segment filters exclude it", async () => {
-  const user = userEvent.setup();
-  const data = dashboard();
-  const { rerender } = render(
-    <MarketWorkspace data={data} filters={{}} dimension="square_footage" />,
-  );
-
-  await user.click(
-    screen.getByRole("button", { name: "Compare price impact for property 1" }),
-  );
-  expect(screen.getByText("Selected property #1")).toBeInTheDocument();
-  expect(screen.getByLabelText("Bedrooms")).toHaveValue(3);
-
-  await user.type(screen.getByLabelText("Search properties"), "250000");
-  expect(screen.getByText("Selected property #1")).toBeInTheDocument();
-
-  rerender(
+test("shows market-level what-if controls separately from the source property table", () => {
+  render(
     <MarketWorkspace
-      data={data}
-      filters={{ min_price: 200001 }}
+      data={dashboard()}
+      filters={{}}
+      scenario={undefined}
       dimension="square_footage"
     />,
   );
-  expect(screen.queryByText("Selected property #1")).not.toBeInTheDocument();
-  expect(
-    screen.getByText("Select a sample property to compare."),
-  ).toBeInTheDocument();
-});
 
-test("clears an active price impact result when segment filters remove the selected property", async () => {
-  const user = userEvent.setup();
-  vi.spyOn(globalThis, "fetch").mockResolvedValue(
-    Response.json({
-      baseline: {
-        square_footage: 1501,
-        bedrooms: 3,
-        bathrooms: 2,
-        year_built: 1991,
-        lot_size: 6001,
-        distance_to_city_center: 4,
-        school_rating: 7,
-      },
-      changes: { square_footage: { from: 1501, to: 1600 } },
-      baseline_predicted_price: 400000,
-      scenario_predicted_price: 410000,
-      absolute_change: 10000,
-      percentage_change: 2.5,
+  expect(
+    screen.getByRole("heading", { name: "Market what-if analysis" }),
+  ).toBeInTheDocument();
+  expect(screen.getByLabelText("School rating change")).toHaveValue(null);
+  expect(screen.getByLabelText("Square footage change (%)")).toHaveValue(null);
+  expect(
+    screen.getByRole("table", { name: /property records/i }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", {
+      name: /compare price impact for property/i,
     }),
-  );
-  const data = dashboard();
-  const { rerender } = render(
-    <MarketWorkspace data={data} filters={{}} dimension="square_footage" />,
-  );
-
-  await user.click(
-    screen.getByRole("button", { name: "Compare price impact for property 1" }),
-  );
-  await user.clear(screen.getByLabelText("Square footage"));
-  await user.type(screen.getByLabelText("Square footage"), "1600");
-  await user.click(
-    screen.getByRole("button", { name: "Compare price impact" }),
-  );
-  expect(
-    await screen.findByText("Model prediction results"),
-  ).toBeInTheDocument();
-
-  rerender(
-    <MarketWorkspace
-      data={data}
-      filters={{ min_price: 200001 }}
-      dimension="square_footage"
-    />,
-  );
-
-  expect(
-    screen.queryByText("Model prediction results"),
   ).not.toBeInTheDocument();
-  expect(screen.queryByLabelText("Square footage")).not.toBeInTheDocument();
-  expect(
-    screen.getByText("Select a sample property to compare."),
-  ).toBeInTheDocument();
 });
 
-test("a zero-match segment has no selectable property or comparison form", () => {
+test("a zero-match segment disables scenario application", () => {
   const data = dashboard();
   data.summary = {
     total_count: 2,
@@ -162,6 +110,7 @@ test("a zero-match segment has no selectable property or comparison form", () =>
     <MarketWorkspace
       data={data}
       filters={{ min_price: 999999 }}
+      scenario={undefined}
       dimension="square_footage"
     />,
   );
@@ -169,35 +118,30 @@ test("a zero-match segment has no selectable property or comparison form", () =>
   expect(
     screen.getByText("No properties match the current table filters."),
   ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Apply scenario" })).toBeDisabled();
   expect(
-    screen.queryByRole("button", { name: /compare price impact/i }),
-  ).not.toBeInTheDocument();
-  const workspace = screen.getByRole("region", {
-    name: /price impact workspace/i,
-  });
-  expect(
-    within(workspace).getByText("Select a sample property to compare."),
+    screen.getByText(/scenario analysis is unavailable/i),
   ).toBeInTheDocument();
-  expect(within(workspace).queryByRole("form")).not.toBeInTheDocument();
 });
 
-test("keeps export bounds aligned with the table after local search and sort", async () => {
+test("local table search, sorting, and pagination do not change applied analysis conditions", async () => {
   const user = userEvent.setup();
-  vi.stubGlobal("URL", {
-    createObjectURL: vi.fn(() => "blob:sample"),
-    revokeObjectURL: vi.fn(),
-  });
-  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
   const fetchMock = vi
     .spyOn(globalThis, "fetch")
     .mockResolvedValue(
       new Response("id,price\n", { headers: { "Content-Type": "text/csv" } }),
     );
-  const data = dashboard();
+  vi.stubGlobal("URL", {
+    createObjectURL: vi.fn(() => "blob:sample"),
+    revokeObjectURL: vi.fn(),
+  });
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
   render(
     <MarketWorkspace
-      data={data}
+      data={dashboard()}
       filters={{ min_price: 200000 }}
+      scenario={undefined}
       dimension="bedrooms"
     />,
   );
@@ -211,6 +155,6 @@ test("keeps export bounds aligned with the table after local search and sort", a
   await user.click(screen.getByRole("button", { name: "Export segment CSV" }));
 
   expect(fetchMock).toHaveBeenCalledWith(
-    "/api/market-analysis/export?type=data&format=csv&min_price=200000",
+    "/api/market-analysis/export?format=csv&min_price=200000",
   );
 });

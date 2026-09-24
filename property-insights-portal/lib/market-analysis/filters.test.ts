@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   dashboardSearchParams,
   filterSearchParams,
+  conditionSearchParams,
   matchesSegment,
   parseMarketQuery,
 } from "./filters";
@@ -25,6 +26,7 @@ describe("market query parsing", () => {
     ).toEqual({
       ok: true,
       filters: { min_price: 200000 },
+      scenario: undefined,
       dimension: "bedrooms",
     });
   });
@@ -37,6 +39,13 @@ describe("market query parsing", () => {
     ["fractional integer bound", { min_bedrooms: "2.5" }],
     ["inverted range", { min_price: "3", max_price: "2" }],
     ["price is not a feature dimension", { chart_dimension: "price" }],
+    ["zero-only scenario", { scenario_school_rating_delta: "0" }],
+    ["duplicate scenario value", { scenario_school_rating_delta: ["1", "2"] }],
+    ["unknown scenario parameter", { scenario_id: "abc" }],
+    [
+      "nonfinite scenario adjustment",
+      { scenario_school_rating_delta: "Infinity" },
+    ],
   ])("rejects %s", (_name, query) => {
     expect(parseMarketQuery(query).ok).toBe(false);
   });
@@ -50,6 +59,34 @@ describe("market query parsing", () => {
     expect(dashboardSearchParams(filters, "bedrooms").toString()).toBe(
       "min_price=200000&max_price=300000&chart_dimension=bedrooms",
     );
+  });
+
+  test("serializes applied conditions and chart dimension separately", () => {
+    const filters = { min_bedrooms: 3 };
+    const scenario = { schoolRatingDelta: 1, squareFootagePercent: 5 };
+
+    expect(conditionSearchParams(filters, scenario).toString()).toBe(
+      "min_bedrooms=3&scenario_school_rating_delta=1&scenario_square_footage_percent=5",
+    );
+    expect(
+      dashboardSearchParams(filters, "bedrooms", scenario).toString(),
+    ).toBe(
+      "min_bedrooms=3&scenario_school_rating_delta=1&scenario_square_footage_percent=5&chart_dimension=bedrooms",
+    );
+  });
+
+  test("normalizes zero adjustments away when another adjustment is active", () => {
+    expect(
+      parseMarketQuery({
+        scenario_school_rating_delta: "0.0",
+        scenario_square_footage_percent: "5.00",
+      }),
+    ).toEqual({
+      ok: true,
+      filters: {},
+      scenario: { squareFootagePercent: 5 },
+      dimension: "square_footage",
+    });
   });
 
   test("matches both inclusive bounds", () => {

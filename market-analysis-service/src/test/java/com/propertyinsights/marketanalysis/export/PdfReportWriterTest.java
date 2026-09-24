@@ -8,6 +8,7 @@ import com.propertyinsights.marketanalysis.analysis.DistributionResponse;
 import com.propertyinsights.marketanalysis.analysis.MarketSummary;
 import com.propertyinsights.marketanalysis.analysis.SegmentFilter;
 import com.propertyinsights.marketanalysis.analysis.SegmentFilterParser;
+import com.propertyinsights.marketanalysis.property.PropertyRecord;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -38,14 +39,16 @@ class PdfReportWriterTest {
 
             assertThat(text)
                     .contains(
-                            "Property Market Analysis - CSV sample",
-                            "Historical sample statistics",
-                            "Predictions are not included",
+                            "Property Market Analysis",
+                            "Historical metrics describe source prices",
                             "2026-09-23T00:00:00Z",
                             "price: min >= 200000",
                             "Total records: 80",
                             "Matched records: 80",
                             "Mean price: 100000.00",
+                            "Filtered source property records",
+                            "Property ID: 1",
+                            "Property ID: 80",
                             "Bathroom 0",
                             "Bathroom 79");
 
@@ -105,6 +108,18 @@ class PdfReportWriterTest {
         }
     }
 
+    @Test
+    void wrapsPropertyRowsAtWordBoundaries() throws Exception {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        writer.write(reportWithManyBuckets(), output);
+
+        try (PDDocument document = Loader.loadPDF(output.toByteArray())) {
+            String text = new PDFTextStripper().getText(document);
+
+            assertThat(text).contains("historical_price=100000.00");
+        }
+    }
+
     private ReportData reportWithMaxPrice(String maxPrice) {
         LinkedMultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         params.add("max_price", maxPrice);
@@ -115,6 +130,9 @@ class PdfReportWriterTest {
                 filter,
                 summary,
                 new EnumMap<>(DistributionDimension.class),
+                List.of(),
+                null,
+                null,
                 Instant.parse("2026-09-23T00:00:00Z"));
     }
 
@@ -176,7 +194,28 @@ class PdfReportWriterTest {
         params.add("min_price", "200000");
         SegmentFilter filter = new SegmentFilterParser().parse(params);
 
+        List<PropertyRecord> properties =
+                java.util.stream.IntStream.rangeClosed(1, 80)
+                        .mapToObj(
+                                id ->
+                                        new PropertyRecord(
+                                                id,
+                                                1000 + id,
+                                                3,
+                                                new BigDecimal("2.0"),
+                                                2000,
+                                                6000 + id,
+                                                new BigDecimal("4.0"),
+                                                new BigDecimal("8.0"),
+                                                new BigDecimal("100000.00")))
+                        .toList();
         return new ReportData(
-                filter, summary, distributions, Instant.parse("2026-09-23T00:00:00Z"));
+                filter,
+                summary,
+                distributions,
+                properties,
+                null,
+                null,
+                Instant.parse("2026-09-23T00:00:00Z"));
     }
 }

@@ -22,10 +22,10 @@ type Props = {
 };
 
 const statisticCards = [
-  ["Mean sample price", "mean"],
-  ["Median sample price", "median"],
-  ["Minimum sample price", "minimum"],
-  ["Maximum sample price", "maximum"],
+  ["Mean historical price", "mean"],
+  ["Median historical price", "median"],
+  ["Minimum historical price", "minimum"],
+  ["Maximum historical price", "maximum"],
 ] as const;
 
 function formatPrice(value: number | null): string {

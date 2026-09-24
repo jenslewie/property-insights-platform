@@ -17,14 +17,18 @@ const property = {
   school_rating: 7.6,
   price: 200000,
 };
-const baseline = {
-  square_footage: property.square_footage,
-  bedrooms: property.bedrooms,
-  bathrooms: property.bathrooms,
-  year_built: property.year_built,
-  lot_size: property.lot_size,
-  distance_to_city_center: property.distance_to_city_center,
-  school_rating: property.school_rating,
+const metric = { mean: 100, median: 100, minimum: 50, maximum: 150 };
+const impactMetric = { absolute_change: 10, percentage_change: 10 };
+const priceImpact = {
+  property_count: 2,
+  baseline: metric,
+  scenario: { mean: 110, median: 110, minimum: 60, maximum: 160 },
+  impact: {
+    mean: impactMetric,
+    median: impactMetric,
+    minimum: impactMetric,
+    maximum: impactMetric,
+  },
 };
 
 describe("market API schemas", () => {
@@ -130,12 +134,8 @@ describe("market API schemas", () => {
   test("rejects a price impact response with a string prediction", () => {
     expect(
       priceImpactResponseSchema.safeParse({
-        baseline,
-        changes: { square_footage: { from: 1550, to: 1800 } },
-        baseline_predicted_price: "420000",
-        scenario_predicted_price: 465000,
-        absolute_change: 45000,
-        percentage_change: 10.71,
+        ...priceImpact,
+        baseline: { ...priceImpact.baseline, mean: "100" },
       }).success,
     ).toBe(false);
   });
@@ -143,12 +143,12 @@ describe("market API schemas", () => {
   test("accepts a null percentage change", () => {
     expect(
       priceImpactResponseSchema.safeParse({
-        baseline,
-        changes: { square_footage: { from: 1550, to: 1800 } },
-        baseline_predicted_price: 0,
-        scenario_predicted_price: 45000,
-        absolute_change: 45000,
-        percentage_change: null,
+        ...priceImpact,
+        baseline: { ...priceImpact.baseline, mean: 0 },
+        impact: {
+          ...priceImpact.impact,
+          mean: { absolute_change: 10, percentage_change: null },
+        },
       }).success,
     ).toBe(true);
   });

@@ -60,6 +60,7 @@ export default async function MarketAnalysisPage({
       </header>
       <SegmentFiltersForm
         filters={parsed.filters}
+        scenario={parsed.scenario}
         dimension={parsed.dimension}
       />
       <MarketOverview
@@ -70,6 +71,7 @@ export default async function MarketAnalysisPage({
       <MarketWorkspace
         data={data}
         filters={parsed.filters}
+        scenario={parsed.scenario}
         dimension={parsed.dimension}
       />
     </section>

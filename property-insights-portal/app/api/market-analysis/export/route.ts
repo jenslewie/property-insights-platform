@@ -1,24 +1,12 @@
 import {
-  filterSearchParams,
+  conditionSearchParams,
   parseMarketQuery,
 } from "@/lib/market-analysis/filters";
 
 const defaultMarketAnalysisUrl = "http://localhost:9002";
 const maximumProblemDetailLength = 500;
 
-type ExportKind =
-  | {
-      type: "data";
-      format: "csv";
-      mediaType: "text/csv";
-      filename: "properties.csv";
-    }
-  | {
-      type: "report";
-      format: "pdf";
-      mediaType: "application/pdf";
-      filename: "market-report.pdf";
-    };
+type ExportFormat = "csv" | "pdf";
 
 function invalidExport() {
   return Response.json({ error: "Unsupported export." }, { status: 400 });
@@ -37,57 +25,50 @@ function safeProblemDetail(payload: unknown): string {
   return "The requested export is unavailable.";
 }
 
-function readFilters(url: URL) {
-  const filters = new URLSearchParams(url.searchParams);
-  filters.delete("type");
-  filters.delete("format");
+function readConditions(url: URL): {
+  format: ExportFormat;
+  query: URLSearchParams;
+} | null {
+  const formats = url.searchParams.getAll("format");
+  if (formats.length !== 1 || (formats[0] !== "csv" && formats[0] !== "pdf")) {
+    return null;
+  }
+  if (url.searchParams.has("chart_dimension")) return null;
 
   const values: Record<string, string | string[]> = {};
-  for (const key of new Set(filters.keys())) {
-    const all = filters.getAll(key);
+  for (const key of new Set(url.searchParams.keys())) {
+    if (key === "format") continue;
+    const all = url.searchParams.getAll(key);
     values[key] = all.length === 1 ? all[0] : all;
   }
 
-  if (filters.has("chart_dimension")) return null;
   const parsed = parseMarketQuery(values);
-  return parsed.ok ? parsed.filters : null;
+  if (!parsed.ok) return null;
+
+  const query = new URLSearchParams({ format: formats[0] });
+  conditionSearchParams(parsed.filters, parsed.scenario).forEach((value, key) =>
+    query.append(key, value),
+  );
+  return { format: formats[0], query };
 }
 
-function getExportKind(url: URL): ExportKind | null {
-  const types = url.searchParams.getAll("type");
-  const formats = url.searchParams.getAll("format");
-  if (types.length !== 1 || formats.length !== 1) return null;
-  if (types[0] === "data" && formats[0] === "csv") {
-    return {
-      type: "data",
-      format: "csv",
-      mediaType: "text/csv",
-      filename: "properties.csv",
-    };
-  }
-  if (types[0] === "report" && formats[0] === "pdf") {
-    return {
-      type: "report",
-      format: "pdf",
-      mediaType: "application/pdf",
-      filename: "market-report.pdf",
-    };
-  }
-  return null;
+function safeFilename(
+  value: string | null,
+  format: ExportFormat,
+): string | null {
+  if (!value) return null;
+  const match =
+    /^attachment;\s*filename="?(property-market-analysis_[a-f0-9]{8}\.(csv|pdf))"?$/i.exec(
+      value,
+    );
+  if (!match || match[2] !== format) return null;
+  return match[1];
 }
 
 export async function GET(request: Request) {
-  const incoming = new URL(request.url);
-  const kind = getExportKind(incoming);
-  if (!kind) return invalidExport();
+  const conditions = readConditions(new URL(request.url));
+  if (!conditions) return invalidExport();
 
-  const filters = readFilters(incoming);
-  if (!filters) {
-    return Response.json({ error: "Invalid export filter." }, { status: 400 });
-  }
-
-  const query = new URLSearchParams({ type: kind.type, format: kind.format });
-  filterSearchParams(filters).forEach((value, key) => query.append(key, value));
   const baseUrl = (
     process.env.MARKET_ANALYSIS_API_URL ?? defaultMarketAnalysisUrl
   ).replace(/\/$/, "");
@@ -95,7 +76,7 @@ export async function GET(request: Request) {
   let upstream: Response;
   try {
     upstream = await fetch(
-      `${baseUrl}/api/v1/properties/export?${query.toString()}`,
+      `${baseUrl}/api/v1/market/export?${conditions.query.toString()}`,
       { cache: "no-store" },
     );
   } catch {
@@ -116,12 +97,18 @@ export async function GET(request: Request) {
     return Response.json({ error: safeProblemDetail(payload) }, { status });
   }
 
+  const expectedMediaType =
+    conditions.format === "csv" ? "text/csv" : "application/pdf";
   const upstreamMediaType = upstream.headers
     .get("Content-Type")
     ?.split(";", 1)[0]
     .trim()
     .toLowerCase();
-  if (!upstream.body || upstreamMediaType !== kind.mediaType || !upstream.ok) {
+  const filename = safeFilename(
+    upstream.headers.get("Content-Disposition"),
+    conditions.format,
+  );
+  if (!upstream.body || upstreamMediaType !== expectedMediaType || !filename) {
     return Response.json(
       { error: "Market analysis service returned an invalid export." },
       { status: 502 },
@@ -129,8 +116,8 @@ export async function GET(request: Request) {
   }
 
   const headers = new Headers({
-    "Content-Type": upstream.headers.get("Content-Type") ?? kind.mediaType,
-    "Content-Disposition": `attachment; filename=${kind.filename}`,
+    "Content-Type": upstream.headers.get("Content-Type") ?? expectedMediaType,
+    "Content-Disposition": `attachment; filename=${filename}`,
     "Cache-Control": "no-store",
   });
   return new Response(upstream.body, { status: 200, headers });

@@ -6,6 +6,7 @@ import {
   dashboardSearchParams,
   filterSearchParams,
   parseMarketQuery,
+  type MarketScenario,
 } from "@/lib/market-analysis/filters";
 import {
   featureDimensions,
@@ -17,6 +18,7 @@ import {
 
 type Props = {
   filters: SegmentFilters;
+  scenario?: MarketScenario;
   dimension: FeatureDimension;
 };
 
@@ -43,18 +45,19 @@ function fieldLabel(field: MarketField): string {
   return field.replaceAll("_", " ");
 }
 
-export function SegmentFiltersForm({ filters, dimension }: Props) {
-  const formKey = `${filterSearchParams(filters).toString()}|${dimension}`;
+export function SegmentFiltersForm({ filters, scenario, dimension }: Props) {
+  const formKey = `${filterSearchParams(filters).toString()}|${JSON.stringify(scenario)}|${dimension}`;
   return (
     <SegmentFiltersFormState
       key={formKey}
       dimension={dimension}
       filters={filters}
+      scenario={scenario}
     />
   );
 }
 
-function SegmentFiltersFormState({ filters, dimension }: Props) {
+function SegmentFiltersFormState({ filters, scenario, dimension }: Props) {
   const router = useRouter();
   const [draft, setDraft] = useState(() => initialDraft(filters));
   const [selectedDimension, setSelectedDimension] = useState(dimension);
@@ -79,6 +82,7 @@ function SegmentFiltersFormState({ filters, dimension }: Props) {
     const query = dashboardSearchParams(
       parsed.filters,
       parsed.dimension,
+      scenario,
     ).toString();
     startTransition(() => router.push(`/market-analysis?${query}`));
   }
@@ -86,7 +90,11 @@ function SegmentFiltersFormState({ filters, dimension }: Props) {
   function reset() {
     setDraft({});
     setError(null);
-    const query = dashboardSearchParams({}, selectedDimension).toString();
+    const query = dashboardSearchParams(
+      {},
+      selectedDimension,
+      scenario,
+    ).toString();
     startTransition(() => router.push(`/market-analysis?${query}`));
   }
 

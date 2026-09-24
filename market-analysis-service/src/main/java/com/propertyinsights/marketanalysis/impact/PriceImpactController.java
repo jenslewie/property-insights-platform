@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/properties/price-impact")
-@Tag(name = "Properties")
+@RequestMapping("/api/v1/market/price-impact")
+@Tag(name = "Market")
 public final class PriceImpactController {
 
     private final PriceImpactService service;
@@ -26,45 +26,50 @@ public final class PriceImpactController {
     @PostMapping
     public PriceImpactResponse analyze(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    required = true,
-                    content =
-                    @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(type = "object"),
-                            examples =
-                            @ExampleObject(
-                                    name = "validPriceImpact",
-                                    summary =
-                                            "Increase living area and improve school rating.",
-                                    value =
-                                            """
+                            required = true,
+                            content =
+                                    @Content(
+                                            mediaType = "application/json",
+                                            schema = @Schema(type = "object"),
+                                            examples =
+                                                    @ExampleObject(
+                                                            name = "validPriceImpact",
+                                                            summary =
+                                                                    "Increase school ratings and living area for a filtered segment.",
+                                                            value =
+                                                                    """
                                                     {
-                                                      "baseline": {
-                                                        "square_footage": 1550,
-                                                        "bedrooms": 3,
-                                                        "bathrooms": 2.0,
-                                                        "year_built": 1997,
-                                                        "lot_size": 6800,
-                                                        "distance_to_city_center": 4.1,
-                                                        "school_rating": 7.6
-                                                      },
-                                                      "changes": {
-                                                        "square_footage": 1800,
-                                                        "school_rating": 8.5
+                                                      "filters": {"min_bedrooms": 3},
+                                                      "scenario": {
+                                                        "adjustments": {
+                                                          "school_rating_delta": 1,
+                                                          "square_footage_percent": 5
+                                                        }
                                                       }
                                                     }
                                                     """)))
-            @RequestBody
-            JsonNode request) {
+                    @RequestBody
+                    JsonNode request) {
         if (request == null
                 || !request.isObject()
                 || request.size() != 2
-                || !request.has("baseline")
-                || !request.has("changes")) {
-            throw new ApiException(
-                    HttpStatus.UNPROCESSABLE_ENTITY, "Invalid price impact request.");
+                || !request.has("filters")
+                || !request.has("scenario")) {
+            throw invalidRequest();
         }
 
-        return service.compare(request.get("baseline"), request.get("changes"));
+        JsonNode scenario = request.get("scenario");
+        if (scenario == null
+                || !scenario.isObject()
+                || scenario.size() != 1
+                || !scenario.has("adjustments")) {
+            throw invalidRequest();
+        }
+
+        return service.compare(request.get("filters"), scenario.get("adjustments"));
+    }
+
+    private static ApiException invalidRequest() {
+        return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "Invalid price impact request.");
     }
 }
