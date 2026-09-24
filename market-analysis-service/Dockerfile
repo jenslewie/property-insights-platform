@@ -5,7 +5,7 @@ WORKDIR /workspace/market-analysis-service
 COPY market-analysis-service/pom.xml ./
 COPY market-analysis-service/src ./src
 
-RUN mvn -q -DskipTests package
+RUN --mount=type=cache,target=/root/.m2/repository mvn -q -DskipTests package
 
 
 FROM eclipse-temurin:21-jre
