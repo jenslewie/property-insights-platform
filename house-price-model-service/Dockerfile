@@ -3,24 +3,24 @@ FROM ghcr.io/astral-sh/uv:0.12.17 AS uv
 
 FROM python:3.13-slim AS builder
 
-COPY --from=uv /uv /uvx /bin/
+COPY --from=uv /uv /usr/local/bin/uv
 
 ENV UV_LINK_MODE=copy
 
-ARG SERVICE_DIR=house-price-model-service
 ARG MODEL_TYPE=ridge
-ARG MODEL_ALPHA=
+ARG MODEL_ALPHA
+ARG MODEL_N_SEGMENTS
 ARG EVALUATION_METHOD=repeated-kfold
 
-WORKDIR /workspace/${SERVICE_DIR}
+WORKDIR /workspace/house-price-model-service
 
-COPY ${SERVICE_DIR}/pyproject.toml ${SERVICE_DIR}/uv.lock ./
+COPY house-price-model-service/pyproject.toml house-price-model-service/uv.lock ./
 
-RUN uv sync --frozen --no-dev --no-cache
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-install-project
 
 COPY data /workspace/data
-COPY ${SERVICE_DIR}/app ./app
-COPY ${SERVICE_DIR}/training ./training
+COPY house-price-model-service/app ./app
+COPY house-price-model-service/training ./training
 
 RUN mkdir -p artifacts && \
     if [ -z "${MODEL_ALPHA}" ]; then \
@@ -37,16 +37,19 @@ RUN mkdir -p artifacts && \
 
 FROM python:3.13-slim AS runtime
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/workspace/house-price-model-service/.venv/bin:${PATH}"
 
-ARG SERVICE_DIR=house-price-model-service
+WORKDIR /workspace/house-price-model-service
 
-WORKDIR /workspace/${SERVICE_DIR}
+RUN groupadd --system app && useradd --system --gid app --home-dir /nonexistent app
 
-COPY --from=builder /workspace/${SERVICE_DIR}/.venv ./.venv
-COPY --from=builder /workspace/${SERVICE_DIR}/app ./app
-COPY --from=builder /workspace/${SERVICE_DIR}/artifacts ./artifacts
+COPY --from=builder --chown=app:app /workspace/house-price-model-service/.venv ./.venv
+COPY --from=builder --chown=app:app /workspace/house-price-model-service/app ./app
+COPY --from=builder --chown=app:app /workspace/house-price-model-service/artifacts ./artifacts
+
+USER app
 
 EXPOSE 9003
 
@@ -57,4 +60,4 @@ HEALTHCHECK \
     --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9003/health', timeout=2)"]
 
-CMD [".venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9003"]
+ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9003"]

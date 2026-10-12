@@ -3,34 +3,33 @@ FROM ghcr.io/astral-sh/uv:0.12.17 AS uv
 
 FROM python:3.13-slim AS builder
 
-COPY --from=uv /uv /uvx /bin/
+COPY --from=uv /uv /usr/local/bin/uv
 
 ENV UV_LINK_MODE=copy
 
-ARG SERVICE_DIR=property-estimator-service
+WORKDIR /workspace/property-estimator-service
 
-WORKDIR /workspace/${SERVICE_DIR}
+COPY property-estimator-service/pyproject.toml property-estimator-service/uv.lock ./
 
-COPY ${SERVICE_DIR}/pyproject.toml ${SERVICE_DIR}/uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-install-project
 
-RUN uv sync --frozen --no-dev --no-cache
-
-COPY ${SERVICE_DIR}/app ./app
+COPY property-estimator-service/app ./app
 
 
 FROM python:3.13-slim AS runtime
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/workspace/property-estimator-service/.venv/bin:${PATH}"
 
-ARG SERVICE_DIR=property-estimator-service
+WORKDIR /workspace/property-estimator-service
 
-WORKDIR /workspace/${SERVICE_DIR}
+RUN groupadd --system app && useradd --system --gid app --home-dir /nonexistent app
 
-COPY --from=builder /workspace/${SERVICE_DIR}/.venv ./.venv
-COPY --from=builder /workspace/${SERVICE_DIR}/app ./app
+COPY --from=builder --chown=app:app /workspace/property-estimator-service/.venv ./.venv
+COPY --from=builder --chown=app:app /workspace/property-estimator-service/app ./app
 
-ENV PATH="/workspace/property-estimator-service/.venv/bin:$PATH"
+USER app
 
 EXPOSE 9001
 
@@ -39,6 +38,6 @@ HEALTHCHECK \
     --timeout=3s \
     --start-period=10s \
     --retries=3 \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9001/health', timeout=2)"]
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9001/health', timeout=2)"]
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9001"]
+ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "9001"]
