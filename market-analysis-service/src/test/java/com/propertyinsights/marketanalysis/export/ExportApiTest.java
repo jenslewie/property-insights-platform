@@ -29,6 +29,8 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -246,6 +248,50 @@ class ExportApiTest {
         .andExpect(status().isServiceUnavailable())
         .andExpect(request().asyncNotStarted())
         .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "csv, scenario_school_rating_delta, 0.5",
+    "pdf, scenario_school_rating_delta, 0.5",
+    "csv, scenario_square_footage_percent, 5",
+    "pdf, scenario_square_footage_percent, 5",
+    "csv, scenario_bedrooms_delta, 1",
+    "pdf, scenario_bedrooms_delta, 1",
+    "csv, scenario_bathrooms_delta, 0.5",
+    "pdf, scenario_bathrooms_delta, 0.5",
+    "csv, scenario_year_built_delta, 5",
+    "pdf, scenario_year_built_delta, 5",
+    "csv, scenario_lot_size_delta, 500",
+    "pdf, scenario_lot_size_delta, 500",
+    "csv, scenario_distance_to_city_center_delta, 0.5",
+    "pdf, scenario_distance_to_city_center_delta, 0.5"
+  })
+  void exportsWithSingleFeatureAdjustment(String format, String parameter, String adjustment)
+      throws Exception {
+    MvcResult started =
+        mockMvc
+            .perform(
+                get(EXPORT_PATH)
+                    .param("format", format)
+                    .param("min_price", "350000")
+                    .param(parameter, adjustment))
+            .andExpect(status().isOk())
+            .andExpect(request().asyncStarted())
+            .andReturn();
+
+    var response =
+        mockMvc
+            .perform(asyncDispatch(started))
+            .andExpect(status().isOk())
+            .andExpect(
+                content()
+                    .contentTypeCompatibleWith(
+                        format.equals("csv") ? "text/csv" : MediaType.APPLICATION_PDF_VALUE))
+            .andReturn()
+            .getResponse();
+
+    assertThat(response.getContentAsByteArray()).isNotEmpty();
   }
 
   private String lastCsv;

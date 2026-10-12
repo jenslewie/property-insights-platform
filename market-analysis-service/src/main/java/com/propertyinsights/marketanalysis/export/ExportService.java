@@ -101,6 +101,11 @@ public final class ExportService {
 
   private boolean sameFeatures(HousingFeatures first, HousingFeatures second) {
     return first.squareFootage() == second.squareFootage()
+        && first.bedrooms() == second.bedrooms()
+        && first.bathrooms().compareTo(second.bathrooms()) == 0
+        && first.yearBuilt() == second.yearBuilt()
+        && first.lotSize() == second.lotSize()
+        && first.distanceToCityCenter().compareTo(second.distanceToCityCenter()) == 0
         && first.schoolRating().compareTo(second.schoolRating()) == 0;
   }
 
