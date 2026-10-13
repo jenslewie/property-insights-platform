@@ -1,7 +1,6 @@
-package com.propertyinsights.marketanalysis.analysis;
+package com.propertyinsights.marketanalysis.config;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.propertyinsights.marketanalysis.config.MarketSettings;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
