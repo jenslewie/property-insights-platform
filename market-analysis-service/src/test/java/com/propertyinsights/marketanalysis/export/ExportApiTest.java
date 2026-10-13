@@ -79,7 +79,7 @@ class ExportApiTest {
                 .param("scenario_bedrooms_delta", "1")
                 .param("scenario_bathrooms_delta", "0.5")
                 .param("scenario_year_built_delta", "5")
-                .param("scenario_lot_size_delta", "500")
+                .param("scenario_lot_size_percent", "5.5")
                 .param("scenario_distance_to_city_center_delta", "0.5"));
     String csv = lastCsv;
 
@@ -96,7 +96,7 @@ class ExportApiTest {
                     .param("scenario_bedrooms_delta", "1")
                     .param("scenario_bathrooms_delta", "0.5")
                     .param("scenario_year_built_delta", "5")
-                    .param("scenario_lot_size_delta", "500")
+                    .param("scenario_lot_size_percent", "5.5")
                     .param("scenario_distance_to_city_center_delta", "0.5"))
             .andExpect(request().asyncStarted())
             .andReturn();
@@ -138,7 +138,7 @@ class ExportApiTest {
               "Bedrooms: +1",
               "Bathrooms: +0.5",
               "Year built: +5",
-              "Lot size: +500",
+              "Lot size: +5.5%",
               "Distance to city center: +0.5",
               "School rating: +0.5",
               "Selected properties: 12",
@@ -262,8 +262,8 @@ class ExportApiTest {
     "pdf, scenario_bathrooms_delta, 0.5",
     "csv, scenario_year_built_delta, 5",
     "pdf, scenario_year_built_delta, 5",
-    "csv, scenario_lot_size_delta, 500",
-    "pdf, scenario_lot_size_delta, 500",
+    "csv, scenario_lot_size_percent, 5.5",
+    "pdf, scenario_lot_size_percent, 5.5",
     "csv, scenario_distance_to_city_center_delta, 0.5",
     "pdf, scenario_distance_to_city_center_delta, 0.5"
   })

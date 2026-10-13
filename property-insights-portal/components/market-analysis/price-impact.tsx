@@ -63,9 +63,9 @@ function requestBody(
     ...(scenario.yearBuiltDelta === undefined
       ? {}
       : { year_built_delta: scenario.yearBuiltDelta }),
-    ...(scenario.lotSizeDelta === undefined
+    ...(scenario.lotSizePercent === undefined
       ? {}
-      : { lot_size_delta: scenario.lotSizeDelta }),
+      : { lot_size_percent: scenario.lotSizePercent }),
     ...(scenario.distanceToCityCenterDelta === undefined
       ? {}
       : { distance_to_city_center_delta: scenario.distanceToCityCenterDelta }),

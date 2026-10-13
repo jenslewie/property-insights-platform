@@ -78,8 +78,8 @@ class OpenApiDocumentationTest {
                 .value(5))
         .andExpect(
             jsonPath(
-                    "$.paths['/api/v1/market/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.scenario.adjustments.lot_size_delta")
-                .value(500))
+                    "$.paths['/api/v1/market/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.scenario.adjustments.lot_size_percent")
+                .value(5))
         .andExpect(
             jsonPath(
                     "$.paths['/api/v1/market/price-impact'].post.requestBody.content['application/json'].examples.validPriceImpact.value.scenario.adjustments.distance_to_city_center_delta")
@@ -138,7 +138,7 @@ class OpenApiDocumentationTest {
           || name.equals("scenario_bedrooms_delta")
           || name.equals("scenario_bathrooms_delta")
           || name.equals("scenario_year_built_delta")
-          || name.equals("scenario_lot_size_delta")
+          || name.equals("scenario_lot_size_percent")
           || name.equals("scenario_distance_to_city_center_delta")) {
         continue;
       }
@@ -224,7 +224,7 @@ class OpenApiDocumentationTest {
             "scenario_bedrooms_delta", "integer",
             "scenario_bathrooms_delta", "number",
             "scenario_year_built_delta", "integer",
-            "scenario_lot_size_delta", "integer",
+            "scenario_lot_size_percent", "number",
             "scenario_distance_to_city_center_delta", "number");
     for (Map.Entry<String, String> scenarioType : scenarioTypes.entrySet()) {
       String name = scenarioType.getKey();

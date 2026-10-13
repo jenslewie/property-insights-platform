@@ -61,7 +61,7 @@ test("shows the mean prediction first and keeps all four metrics collapsed", asy
     bedroomsDelta: 1,
     bathroomsDelta: 0.5,
     yearBuiltDelta: 5,
-    lotSizeDelta: 500,
+    lotSizePercent: 5.5,
     distanceToCityCenterDelta: 0.5,
   });
 
@@ -84,7 +84,7 @@ test("shows the mean prediction first and keeps all four metrics collapsed", asy
             bedrooms_delta: 1,
             bathrooms_delta: 0.5,
             year_built_delta: 5,
-            lot_size_delta: 500,
+            lot_size_percent: 5.5,
             distance_to_city_center_delta: 0.5,
           },
         },

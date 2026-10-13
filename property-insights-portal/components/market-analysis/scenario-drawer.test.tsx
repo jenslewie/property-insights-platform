@@ -58,7 +58,7 @@ test("keeps scenario inputs in a separate drawer with segment context", async ()
     "Bedrooms change",
     "Bathrooms change",
     "Year built change (years)",
-    "Lot size change",
+    "Lot size change (%)",
     "Distance to city center change",
   ]) {
     expect(screen.getByLabelText(label)).toHaveValue(null);
@@ -83,7 +83,7 @@ test("applies all seven feature adjustments and keeps filters and chart in the U
   await user.type(screen.getByLabelText("Bedrooms change"), "1");
   await user.type(screen.getByLabelText("Bathrooms change"), "0.5");
   await user.type(screen.getByLabelText("Year built change (years)"), "5");
-  await user.type(screen.getByLabelText("Lot size change"), "500");
+  await user.type(screen.getByLabelText("Lot size change (%)"), "5.5");
   await user.type(
     screen.getByLabelText("Distance to city center change"),
     "0.5",
@@ -93,7 +93,7 @@ test("applies all seven feature adjustments and keeps filters and chart in the U
   expect(pushState).toHaveBeenCalledWith(
     null,
     "",
-    "/market-analysis?min_bedrooms=3&scenario_school_rating_delta=1&scenario_square_footage_percent=5&scenario_bedrooms_delta=1&scenario_bathrooms_delta=0.5&scenario_year_built_delta=5&scenario_lot_size_delta=500&scenario_distance_to_city_center_delta=0.5&chart_dimension=bedrooms",
+    "/market-analysis?min_bedrooms=3&scenario_school_rating_delta=1&scenario_square_footage_percent=5&scenario_bedrooms_delta=1&scenario_bathrooms_delta=0.5&scenario_year_built_delta=5&scenario_lot_size_percent=5.5&scenario_distance_to_city_center_delta=0.5&chart_dimension=bedrooms",
   );
   expect(
     screen.queryByRole("dialog", { name: "What-if scenario" }),
@@ -222,7 +222,7 @@ test.each([
   ["Bedrooms change", "-3", { bedrooms: 3 }],
   ["Bathrooms change", "-2", { bathrooms: 2 }],
   ["Year built change (years)", "-100", { year_built: 1997 }],
-  ["Lot size change", "-6800", { lot_size: 6800 }],
+  ["Lot size change (%)", "-100", { lot_size: 6800 }],
   ["Distance to city center change", "-5", { distance_to_city_center: 4.1 }],
   ["School rating change", "-8", { school_rating: 7 }],
   ["Square footage change (%)", "600", { square_footage: 1500 }],
@@ -233,7 +233,7 @@ test.each([
     String(new Date().getUTCFullYear() + 6 - 1997),
     { year_built: 1997 },
   ],
-  ["Lot size change", "94000", { lot_size: 6800 }],
+  ["Lot size change (%)", "1400", { lot_size: 6800 }],
   ["Distance to city center change", "96", { distance_to_city_center: 4.1 }],
   ["School rating change", "14", { school_rating: 7 }],
 ] as const)(

@@ -41,7 +41,7 @@ public final class ExportController {
   private static final String BEDROOMS_DELTA = "scenario_bedrooms_delta";
   private static final String BATHROOMS_DELTA = "scenario_bathrooms_delta";
   private static final String YEAR_BUILT_DELTA = "scenario_year_built_delta";
-  private static final String LOT_SIZE_DELTA = "scenario_lot_size_delta";
+  private static final String LOT_SIZE_PERCENT = "scenario_lot_size_percent";
   private static final String DISTANCE_TO_CITY_CENTER_DELTA =
       "scenario_distance_to_city_center_delta";
   private static final Map<String, String> SCENARIO_FIELDS =
@@ -51,7 +51,7 @@ public final class ExportController {
           BEDROOMS_DELTA, "bedrooms_delta",
           BATHROOMS_DELTA, "bathrooms_delta",
           YEAR_BUILT_DELTA, "year_built_delta",
-          LOT_SIZE_DELTA, "lot_size_delta",
+          LOT_SIZE_PERCENT, "lot_size_percent",
           DISTANCE_TO_CITY_CENTER_DELTA, "distance_to_city_center_delta");
 
   private final ObjectMapper objectMapper;
@@ -110,10 +110,10 @@ public final class ExportController {
           @RequestParam(name = YEAR_BUILT_DELTA, required = false)
           BigDecimal yearBuiltDelta,
       @Parameter(
-              description = "Optional integer change in lot size.",
-              schema = @Schema(type = "integer", format = "int32"))
-          @RequestParam(name = LOT_SIZE_DELTA, required = false)
-          BigDecimal lotSizeDelta,
+              description = "Optional percentage change to lot size.",
+              schema = @Schema(type = "number", format = "double"))
+          @RequestParam(name = LOT_SIZE_PERCENT, required = false)
+          BigDecimal lotSizePercent,
       @Parameter(
               description = "Optional change in distance to city center.",
               schema = @Schema(type = "number", format = "double"))
@@ -128,7 +128,7 @@ public final class ExportController {
     scenarioValues.put(BEDROOMS_DELTA, bedroomsDelta);
     scenarioValues.put(BATHROOMS_DELTA, bathroomsDelta);
     scenarioValues.put(YEAR_BUILT_DELTA, yearBuiltDelta);
-    scenarioValues.put(LOT_SIZE_DELTA, lotSizeDelta);
+    scenarioValues.put(LOT_SIZE_PERCENT, lotSizePercent);
     scenarioValues.put(DISTANCE_TO_CITY_CENTER_DELTA, distanceToCityCenterDelta);
     ScenarioAdjustments scenario = parseScenario(params, filterParams, scenarioValues);
     SegmentFilter filter = filterParser.parse(filterParams);

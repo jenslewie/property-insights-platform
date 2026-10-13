@@ -460,9 +460,9 @@ public final class PdfReportWriter {
         && scenario.yearBuiltDelta().compareTo(BigDecimal.ZERO) != 0) {
       adjustments.add("Year built: " + signedNumber(scenario.yearBuiltDelta()));
     }
-    if (scenario.lotSizeDelta() != null
-        && scenario.lotSizeDelta().compareTo(BigDecimal.ZERO) != 0) {
-      adjustments.add("Lot size: " + signedNumber(scenario.lotSizeDelta()));
+    if (scenario.lotSizePercent() != null
+        && scenario.lotSizePercent().compareTo(BigDecimal.ZERO) != 0) {
+      adjustments.add("Lot size: " + signedNumber(scenario.lotSizePercent()) + "%");
     }
     if (scenario.distanceToCityCenterDelta() != null
         && scenario.distanceToCityCenterDelta().compareTo(BigDecimal.ZERO) != 0) {

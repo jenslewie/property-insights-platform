@@ -11,11 +11,7 @@ const integerFields = new Set([
   "year_built",
   "lot_size",
 ]);
-const integerScenarioFields = [
-  "bedrooms_delta",
-  "year_built_delta",
-  "lot_size_delta",
-] as const;
+const integerScenarioFields = ["bedrooms_delta", "year_built_delta"] as const;
 const filterNamePattern = new RegExp(`^(min|max)_(${marketFields.join("|")})$`);
 
 const filtersSchema = z.record(z.string(), z.number().finite());
@@ -26,7 +22,7 @@ const adjustmentsSchema = z
     bedrooms_delta: z.number().finite().optional(),
     bathrooms_delta: z.number().finite().optional(),
     year_built_delta: z.number().finite().optional(),
-    lot_size_delta: z.number().finite().optional(),
+    lot_size_percent: z.number().finite().optional(),
     distance_to_city_center_delta: z.number().finite().optional(),
   })
   .strict()

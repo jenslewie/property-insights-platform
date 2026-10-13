@@ -16,7 +16,7 @@ public record ScenarioAdjustments(
     BigDecimal bedroomsDelta,
     BigDecimal bathroomsDelta,
     BigDecimal yearBuiltDelta,
-    BigDecimal lotSizeDelta,
+    BigDecimal lotSizePercent,
     BigDecimal distanceToCityCenterDelta) {
 
   private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
@@ -31,7 +31,7 @@ public record ScenarioAdjustments(
     BigDecimal bedroomsDelta = null;
     BigDecimal bathroomsDelta = null;
     BigDecimal yearBuiltDelta = null;
-    BigDecimal lotSizeDelta = null;
+    BigDecimal lotSizePercent = null;
     BigDecimal distanceToCityCenterDelta = null;
     Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
 
@@ -44,7 +44,7 @@ public record ScenarioAdjustments(
         case "bedrooms_delta" -> bedroomsDelta = integer(value);
         case "bathrooms_delta" -> bathroomsDelta = value;
         case "year_built_delta" -> yearBuiltDelta = integer(value);
-        case "lot_size_delta" -> lotSizeDelta = integer(value);
+        case "lot_size_percent" -> lotSizePercent = value;
         case "distance_to_city_center_delta" -> distanceToCityCenterDelta = value;
         default -> throw invalidRequest();
       }
@@ -56,16 +56,16 @@ public record ScenarioAdjustments(
         bedroomsDelta,
         bathroomsDelta,
         yearBuiltDelta,
-        lotSizeDelta,
+        lotSizePercent,
         distanceToCityCenterDelta);
   }
 
   public HousingFeatures apply(HousingFeatures baseline) {
-    int squareFootage = adjustedSquareFootage(baseline.squareFootage());
+    int squareFootage = adjustedPercentage(baseline.squareFootage(), squareFootagePercent);
     int bedrooms = adjustedInteger(baseline.bedrooms(), bedroomsDelta);
     BigDecimal bathrooms = adjustedDecimal(baseline.bathrooms(), bathroomsDelta);
     int yearBuilt = adjustedInteger(baseline.yearBuilt(), yearBuiltDelta);
-    int lotSize = adjustedInteger(baseline.lotSize(), lotSizeDelta);
+    int lotSize = adjustedPercentage(baseline.lotSize(), lotSizePercent);
     BigDecimal distanceToCityCenter =
         adjustedDecimal(baseline.distanceToCityCenter(), distanceToCityCenterDelta);
     BigDecimal schoolRating = adjustedDecimal(baseline.schoolRating(), schoolRatingDelta);
@@ -105,7 +105,7 @@ public record ScenarioAdjustments(
         || (bedroomsDelta != null && bedroomsDelta.compareTo(BigDecimal.ZERO) != 0)
         || (bathroomsDelta != null && bathroomsDelta.compareTo(BigDecimal.ZERO) != 0)
         || (yearBuiltDelta != null && yearBuiltDelta.compareTo(BigDecimal.ZERO) != 0)
-        || (lotSizeDelta != null && lotSizeDelta.compareTo(BigDecimal.ZERO) != 0)
+        || (lotSizePercent != null && lotSizePercent.compareTo(BigDecimal.ZERO) != 0)
         || (distanceToCityCenterDelta != null
             && distanceToCityCenterDelta.compareTo(BigDecimal.ZERO) != 0);
   }
@@ -134,14 +134,14 @@ public record ScenarioAdjustments(
     }
   }
 
-  private int adjustedSquareFootage(int squareFootage) {
-    if (squareFootagePercent == null || squareFootagePercent.compareTo(BigDecimal.ZERO) == 0) {
-      return squareFootage;
+  private static int adjustedPercentage(int baseline, BigDecimal percent) {
+    if (percent == null || percent.compareTo(BigDecimal.ZERO) == 0) {
+      return baseline;
     }
 
     try {
-      return BigDecimal.valueOf(squareFootage)
-          .multiply(ONE_HUNDRED.add(squareFootagePercent))
+      return BigDecimal.valueOf(baseline)
+          .multiply(ONE_HUNDRED.add(percent))
           .divide(ONE_HUNDRED, 0, RoundingMode.HALF_UP)
           .intValueExact();
     } catch (ArithmeticException exception) {

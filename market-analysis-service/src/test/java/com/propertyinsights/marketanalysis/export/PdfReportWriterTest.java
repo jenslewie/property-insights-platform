@@ -123,7 +123,7 @@ class PdfReportWriterTest {
               "Bedrooms: +1",
               "Bathrooms: +0.5",
               "Year built: +5",
-              "Lot size: +500",
+              "Lot size: +5.5%",
               "Distance to city center: +0.5",
               "School rating: +1",
               "Selected properties: 50",
@@ -492,7 +492,7 @@ class PdfReportWriterTest {
             new BigDecimal("1"),
             new BigDecimal("0.5"),
             new BigDecimal("5"),
-            new BigDecimal("500"),
+            new BigDecimal("5.5"),
             new BigDecimal("0.5")),
         impact,
         report.generatedAt());

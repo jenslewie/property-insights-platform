@@ -19,6 +19,24 @@ type FeatureRule = {
   adjust: (property: PropertyRecord, adjustment: number) => number;
 };
 
+function adjustedIntegerByPercent(baseline: number, percent: number): number {
+  if (!Number.isFinite(percent)) return Number.NaN;
+
+  // Use the decimal sent in JSON to match BigDecimal's HALF_UP rounding.
+  const [significand, exponent = "0"] = percent.toString().split("e");
+  const [whole, fraction = ""] = significand.split(".");
+  const scale = fraction.length - Number(exponent);
+  let coefficient = BigInt(whole + fraction);
+  const denominator = scale > 0 ? BigInt(10) ** BigInt(scale) : BigInt(1);
+  if (scale < 0) coefficient *= BigInt(10) ** BigInt(-scale);
+
+  const divisor = BigInt(100) * denominator;
+  const numerator = BigInt(baseline) * (divisor + coefficient);
+  const magnitude = numerator < BigInt(0) ? -numerator : numerator;
+  const rounded = (magnitude + divisor / BigInt(2)) / divisor;
+  return Number(numerator < BigInt(0) ? -rounded : rounded);
+}
+
 const featureRules: Readonly<Record<ScenarioField, FeatureRule>> = {
   schoolRatingDelta: {
     label: "school rating",
@@ -28,10 +46,8 @@ const featureRules: Readonly<Record<ScenarioField, FeatureRule>> = {
   squareFootagePercent: {
     label: "square footage",
     propertyField: "square_footage",
-    adjust: (property, adjustment) => {
-      const transformed = (property.square_footage * (100 + adjustment)) / 100;
-      return Math.sign(transformed) * Math.floor(Math.abs(transformed) + 0.5);
-    },
+    adjust: (property, adjustment) =>
+      adjustedIntegerByPercent(property.square_footage, adjustment),
   },
   bedroomsDelta: {
     label: "bedrooms",
@@ -48,10 +64,11 @@ const featureRules: Readonly<Record<ScenarioField, FeatureRule>> = {
     propertyField: "year_built",
     adjust: (property, adjustment) => property.year_built + adjustment,
   },
-  lotSizeDelta: {
+  lotSizePercent: {
     label: "lot size",
     propertyField: "lot_size",
-    adjust: (property, adjustment) => property.lot_size + adjustment,
+    adjust: (property, adjustment) =>
+      adjustedIntegerByPercent(property.lot_size, adjustment),
   },
   distanceToCityCenterDelta: {
     label: "distance to city center",

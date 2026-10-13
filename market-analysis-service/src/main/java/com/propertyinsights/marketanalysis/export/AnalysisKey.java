@@ -41,8 +41,8 @@ public final class AnalysisKey {
         + canonical(scenario.bathroomsDelta())
         + ";year_built_delta="
         + canonical(scenario.yearBuiltDelta())
-        + ";lot_size_delta="
-        + canonical(scenario.lotSizeDelta())
+        + ";lot_size_percent="
+        + canonical(scenario.lotSizePercent())
         + ";distance_to_city_center_delta="
         + canonical(scenario.distanceToCityCenterDelta());
   }

@@ -73,10 +73,11 @@ const scenarioFields: readonly ScenarioFieldDefinition[] = [
     step: "1",
   },
   {
-    key: "lotSizeDelta",
-    label: "Lot size change",
+    key: "lotSizePercent",
+    label: "Lot size change (%)",
     chipLabel: "Lot size",
-    step: "1",
+    suffix: "%",
+    step: "any",
   },
   {
     key: "distanceToCityCenterDelta",
@@ -91,7 +92,6 @@ type Draft = Record<ScenarioField, string>;
 const integerScenarioFields = new Set<ScenarioField>([
   "bedroomsDelta",
   "yearBuiltDelta",
-  "lotSizeDelta",
 ]);
 
 function draftFromScenario(scenario?: MarketScenario): Draft {

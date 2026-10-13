@@ -22,7 +22,7 @@ export type MarketScenario = {
   bedroomsDelta?: number;
   bathroomsDelta?: number;
   yearBuiltDelta?: number;
-  lotSizeDelta?: number;
+  lotSizePercent?: number;
   distanceToCityCenterDelta?: number;
 };
 
@@ -32,14 +32,13 @@ const scenarioParameters = [
   ["scenario_bedrooms_delta", "bedroomsDelta"],
   ["scenario_bathrooms_delta", "bathroomsDelta"],
   ["scenario_year_built_delta", "yearBuiltDelta"],
-  ["scenario_lot_size_delta", "lotSizeDelta"],
+  ["scenario_lot_size_percent", "lotSizePercent"],
   ["scenario_distance_to_city_center_delta", "distanceToCityCenterDelta"],
 ] as const satisfies ReadonlyArray<readonly [string, keyof MarketScenario]>;
 
 const integerScenarioFields = new Set<keyof MarketScenario>([
   "bedroomsDelta",
   "yearBuiltDelta",
-  "lotSizeDelta",
 ]);
 
 const integerFields = new Set<MarketField>([

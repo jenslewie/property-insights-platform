@@ -100,7 +100,7 @@ class PriceImpactServiceTest {
         mapper.readTree(
             "{\"school_rating_delta\":1,\"square_footage_percent\":5,"
                 + "\"bedrooms_delta\":1,\"bathrooms_delta\":0.5,\"year_built_delta\":5,"
-                + "\"lot_size_delta\":500,\"distance_to_city_center_delta\":0.5}"));
+                + "\"lot_size_percent\":5.5,\"distance_to_city_center_delta\":0.5}"));
 
     assertThat(calls)
         .containsExactly(
@@ -118,7 +118,7 @@ class PriceImpactServiceTest {
                     4,
                     new BigDecimal("2.5"),
                     2002,
-                    7300,
+                    7174,
                     new BigDecimal("4.6"),
                     new BigDecimal("9"))));
   }

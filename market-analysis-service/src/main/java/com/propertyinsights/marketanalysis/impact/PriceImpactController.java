@@ -46,7 +46,7 @@ public final class PriceImpactController {
                                                           "bedrooms_delta": 1,
                                                           "bathrooms_delta": 0.5,
                                                           "year_built_delta": 5,
-                                                          "lot_size_delta": 500,
+                                                          "lot_size_percent": 5,
                                                           "distance_to_city_center_delta": 0.5
                                                         }
                                                       }
