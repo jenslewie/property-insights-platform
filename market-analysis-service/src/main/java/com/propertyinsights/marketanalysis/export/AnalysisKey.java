@@ -1,6 +1,6 @@
 package com.propertyinsights.marketanalysis.export;
 
-import com.propertyinsights.marketanalysis.analysis.SegmentFilter;
+import com.propertyinsights.marketanalysis.filter.SegmentFilter;
 import com.propertyinsights.marketanalysis.impact.ScenarioAdjustments;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

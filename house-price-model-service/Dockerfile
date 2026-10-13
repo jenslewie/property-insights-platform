@@ -9,7 +9,6 @@ ENV UV_LINK_MODE=copy
 
 ARG MODEL_TYPE=ridge
 ARG MODEL_ALPHA
-ARG MODEL_N_SEGMENTS
 ARG EVALUATION_METHOD=repeated-kfold
 
 WORKDIR /workspace/house-price-model-service

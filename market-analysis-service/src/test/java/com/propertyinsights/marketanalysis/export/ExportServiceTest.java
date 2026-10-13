@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.propertyinsights.marketanalysis.analysis.DistributionDimension;
 import com.propertyinsights.marketanalysis.analysis.MarketAnalysisService;
-import com.propertyinsights.marketanalysis.analysis.SegmentFilter;
-import com.propertyinsights.marketanalysis.analysis.SegmentFilterParser;
 import com.propertyinsights.marketanalysis.config.MarketSettings;
 import com.propertyinsights.marketanalysis.error.ApiException;
+import com.propertyinsights.marketanalysis.filter.SegmentFilter;
+import com.propertyinsights.marketanalysis.filter.SegmentFilterParser;
 import com.propertyinsights.marketanalysis.impact.PriceImpactService;
 import com.propertyinsights.marketanalysis.impact.ScenarioAdjustments;
 import com.propertyinsights.marketanalysis.property.CsvPropertyLoader;

@@ -2,10 +2,10 @@ package com.propertyinsights.marketanalysis.export;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.propertyinsights.marketanalysis.analysis.SegmentFilter;
-import com.propertyinsights.marketanalysis.analysis.SegmentFilterParameters;
-import com.propertyinsights.marketanalysis.analysis.SegmentFilterParser;
 import com.propertyinsights.marketanalysis.error.ApiException;
+import com.propertyinsights.marketanalysis.filter.SegmentFilter;
+import com.propertyinsights.marketanalysis.filter.SegmentFilterParameters;
+import com.propertyinsights.marketanalysis.filter.SegmentFilterParser;
 import com.propertyinsights.marketanalysis.impact.ScenarioAdjustments;
 import com.propertyinsights.marketanalysis.property.PropertyRecord;
 import io.swagger.v3.oas.annotations.Parameter;

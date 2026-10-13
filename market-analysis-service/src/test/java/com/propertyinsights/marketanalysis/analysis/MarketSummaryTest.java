@@ -2,6 +2,8 @@ package com.propertyinsights.marketanalysis.analysis;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.propertyinsights.marketanalysis.filter.SegmentFilter;
+import com.propertyinsights.marketanalysis.filter.SegmentFilterParser;
 import com.propertyinsights.marketanalysis.property.CsvPropertyLoader;
 import com.propertyinsights.marketanalysis.property.PropertyDataset;
 import com.propertyinsights.marketanalysis.property.PropertyRecord;

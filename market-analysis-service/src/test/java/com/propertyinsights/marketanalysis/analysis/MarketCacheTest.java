@@ -3,6 +3,8 @@ package com.propertyinsights.marketanalysis.analysis;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import com.propertyinsights.marketanalysis.filter.SegmentFilter;
+import com.propertyinsights.marketanalysis.filter.SegmentFilterParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,5 +1,6 @@
 package com.propertyinsights.marketanalysis.analysis;
 
+import com.propertyinsights.marketanalysis.filter.SegmentFilter;
 import com.propertyinsights.marketanalysis.property.PropertyDataset;
 import com.propertyinsights.marketanalysis.property.PropertyRecord;
 import java.math.BigDecimal;

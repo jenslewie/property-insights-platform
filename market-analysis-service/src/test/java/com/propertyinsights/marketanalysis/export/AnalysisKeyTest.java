@@ -2,7 +2,7 @@ package com.propertyinsights.marketanalysis.export;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.propertyinsights.marketanalysis.analysis.SegmentFilterParser;
+import com.propertyinsights.marketanalysis.filter.SegmentFilterParser;
 import com.propertyinsights.marketanalysis.impact.ScenarioAdjustments;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;

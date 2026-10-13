@@ -1,5 +1,7 @@
 package com.propertyinsights.marketanalysis.analysis;
 
+import com.propertyinsights.marketanalysis.filter.SegmentFilterParameters;
+import com.propertyinsights.marketanalysis.filter.SegmentFilterParser;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -1,4 +1,4 @@
-package com.propertyinsights.marketanalysis.analysis;
+package com.propertyinsights.marketanalysis.filter;
 
 import com.propertyinsights.marketanalysis.error.ApiException;
 import java.math.BigDecimal;

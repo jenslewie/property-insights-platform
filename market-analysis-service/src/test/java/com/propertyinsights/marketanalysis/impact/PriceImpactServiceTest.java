@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.propertyinsights.marketanalysis.analysis.SegmentFilterParser;
 import com.propertyinsights.marketanalysis.config.MarketSettings;
 import com.propertyinsights.marketanalysis.error.ApiException;
+import com.propertyinsights.marketanalysis.filter.SegmentFilterParser;
 import com.propertyinsights.marketanalysis.property.PropertyDataset;
 import com.propertyinsights.marketanalysis.property.PropertyRecord;
 import java.math.BigDecimal;

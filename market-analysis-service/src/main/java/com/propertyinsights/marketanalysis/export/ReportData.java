@@ -3,7 +3,7 @@ package com.propertyinsights.marketanalysis.export;
 import com.propertyinsights.marketanalysis.analysis.DistributionDimension;
 import com.propertyinsights.marketanalysis.analysis.DistributionResponse;
 import com.propertyinsights.marketanalysis.analysis.MarketSummary;
-import com.propertyinsights.marketanalysis.analysis.SegmentFilter;
+import com.propertyinsights.marketanalysis.filter.SegmentFilter;
 import com.propertyinsights.marketanalysis.impact.PriceImpactResponse;
 import com.propertyinsights.marketanalysis.impact.ScenarioAdjustments;
 import java.time.Instant;

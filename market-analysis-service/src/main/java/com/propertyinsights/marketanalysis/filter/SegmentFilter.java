@@ -1,4 +1,4 @@
-package com.propertyinsights.marketanalysis.analysis;
+package com.propertyinsights.marketanalysis.filter;
 
 import com.propertyinsights.marketanalysis.property.PropertyRecord;
 import java.math.BigDecimal;

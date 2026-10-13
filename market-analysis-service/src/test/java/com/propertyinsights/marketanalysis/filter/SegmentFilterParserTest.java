@@ -1,4 +1,4 @@
-package com.propertyinsights.marketanalysis.analysis;
+package com.propertyinsights.marketanalysis.filter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
