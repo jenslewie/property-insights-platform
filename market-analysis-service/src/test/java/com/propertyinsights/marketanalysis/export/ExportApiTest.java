@@ -231,6 +231,35 @@ class ExportApiTest {
         .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
   }
 
+  @ParameterizedTest
+  @CsvSource({"scenario_school_rating_delta, 100", "scenario_square_footage_percent, 0.000001"})
+  void csvExportsSourceRowsWhenScenarioCannotBeApplied(String parameter, String adjustment)
+      throws Exception {
+    String baselineFilename =
+        downloadCsv(get(EXPORT_PATH).param("format", "csv").param("min_price", "350000"));
+    String baselineCsv = lastCsv;
+
+    String scenarioFilename =
+        downloadCsv(
+            get(EXPORT_PATH)
+                .param("format", "csv")
+                .param("min_price", "350000")
+                .param(parameter, adjustment));
+
+    assertThat(lastCsv).isEqualTo(baselineCsv);
+    assertThat(scenarioFilename).isNotEqualTo(baselineFilename);
+
+    mockMvc
+        .perform(
+            get(EXPORT_PATH)
+                .param("format", "pdf")
+                .param("min_price", "350000")
+                .param(parameter, adjustment))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(request().asyncNotStarted())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+  }
+
   @Test
   void modelFailureRejectsPdfBeforeStreamingStarts() throws Exception {
     org.mockito.Mockito.when(predictionClient.predict(anyList()))

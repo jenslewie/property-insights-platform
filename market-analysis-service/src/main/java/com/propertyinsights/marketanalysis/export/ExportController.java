@@ -135,14 +135,14 @@ public final class ExportController {
     String analysisKey = AnalysisKey.from(filter, scenario);
 
     if (format.equals("csv")) {
-      return exportPropertiesCsv(filter, scenario, analysisKey);
+      return exportPropertiesCsv(filter, analysisKey);
     }
     return exportMarketReportPdf(filter, scenario, analysisKey);
   }
 
   private ResponseEntity<StreamingResponseBody> exportPropertiesCsv(
-      SegmentFilter filter, ScenarioAdjustments scenario, String analysisKey) {
-    List<PropertyRecord> rows = exportService.properties(filter, scenario);
+      SegmentFilter filter, String analysisKey) {
+    List<PropertyRecord> rows = exportService.properties(filter);
 
     LOGGER
         .atInfo()
