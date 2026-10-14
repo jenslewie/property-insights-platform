@@ -80,30 +80,20 @@ class PdfReportWriterTest {
   }
 
   @Test
-  void paginatesLongDistributionAndWritesTestArtifact() throws Exception {
+  void rendersAllBucketsInFeaturePanel() throws Exception {
     ByteArrayOutputStream output = new ByteArrayOutputStream();
-    writer.write(reportWithManyBuckets(), output);
+    writer.write(reportWithSixBathroomBuckets(), output);
 
-    writeArtifact("market-report-overflow.pdf", output);
+    writeArtifact("market-report-feature-buckets.pdf", output);
 
     try (PDDocument document = Loader.loadPDF(output.toByteArray())) {
-      assertThat(document.getNumberOfPages()).isEqualTo(6);
+      assertThat(document.getNumberOfPages()).isEqualTo(2);
 
-      String text = new PDFTextStripper().getText(document);
+      String text = pageText(document, 2);
       assertThat(text).contains("Bathrooms");
-      for (int index = 0; index < 80; index++) {
+      for (int index = 0; index < 6; index++) {
         assertThat(text).contains("Bathroom " + index);
       }
-
-      boolean foundOverflowHeader = false;
-      for (int page = 1; page <= document.getNumberOfPages(); page++) {
-        String textOnPage = pageText(document, page);
-        if (textOnPage.contains("Properties") && textOnPage.contains("Average historical price")) {
-          assertHeaderGap(document, page, "Properties", "Average historical price");
-          foundOverflowHeader |= page > 2;
-        }
-      }
-      assertThat(foundOverflowHeader).isTrue();
     }
   }
 
@@ -188,7 +178,7 @@ class PdfReportWriterTest {
   @Test
   void doesNotPrintPropertyLevelSourceRows() throws Exception {
     ByteArrayOutputStream output = new ByteArrayOutputStream();
-    writer.write(reportWithManyBuckets(), output);
+    writer.write(normalReport(), output);
 
     try (PDDocument document = Loader.loadPDF(output.toByteArray())) {
       String text = new PDFTextStripper().getText(document);
@@ -407,50 +397,26 @@ class PdfReportWriterTest {
     }
   }
 
-  private ReportData reportWithManyBuckets() {
-    var distributions =
-        new EnumMap<DistributionDimension, DistributionResponse>(DistributionDimension.class);
-
-    for (DistributionDimension dimension : DistributionDimension.values()) {
-      int bucketCount = dimension == DistributionDimension.BATHROOMS ? 80 : 1;
-      List<DistributionBucket> buckets = new ArrayList<>();
-
-      for (int index = 0; index < bucketCount; index++) {
-        String label =
-            dimension == DistributionDimension.BATHROOMS
-                ? "Bathroom " + index
-                : dimension.path() + " sample";
-
-        buckets.add(
-            new DistributionBucket(
-                dimension.path() + "_" + index,
-                label,
-                null,
-                null,
-                null,
-                1,
-                new BigDecimal("100000.00")));
-      }
-
-      distributions.put(dimension, new DistributionResponse(dimension, 80, buckets));
+  private ReportData reportWithSixBathroomBuckets() {
+    ReportData report = normalReport();
+    var distributions = new EnumMap<>(report.distributions());
+    List<DistributionBucket> buckets = new ArrayList<>();
+    for (int index = 0; index < 6; index++) {
+      buckets.add(
+          new DistributionBucket(
+              "bathrooms_" + index,
+              "Bathroom " + index,
+              null,
+              null,
+              null,
+              1,
+              new BigDecimal("100000.00")));
     }
-
-    MarketSummary summary =
-        new MarketSummary(
-            80,
-            80,
-            new MarketSummary.PriceStats(
-                new BigDecimal("100000.00"),
-                new BigDecimal("100000.00"),
-                new BigDecimal("100000.00"),
-                new BigDecimal("100000.00")));
-
-    LinkedMultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-    params.add("min_price", "200000");
-    SegmentFilter filter = new SegmentFilterParser().parse(params);
-
+    distributions.put(
+        DistributionDimension.BATHROOMS,
+        new DistributionResponse(DistributionDimension.BATHROOMS, 6, buckets));
     return new ReportData(
-        filter, summary, distributions, null, null, Instant.parse("2026-09-23T00:00:00Z"));
+        report.filter(), report.summary(), distributions, null, null, report.generatedAt());
   }
 
   private ReportData reportWithScenario(boolean negativeChange) {

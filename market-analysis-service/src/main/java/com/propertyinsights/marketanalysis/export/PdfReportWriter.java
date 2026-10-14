@@ -36,8 +36,6 @@ public final class PdfReportWriter {
   private static final float PAGE_HEIGHT = PDRectangle.LETTER.getHeight();
   private static final float CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
   private static final float FOOTER_LIMIT = 52f;
-  private static final int MAX_COMPACT_BUCKETS = 5;
-  private static final int OVERFLOW_ROWS_PER_PAGE = 24;
   private static final float FEATURE_GAP = 16f;
   private static final float FEATURE_WIDTH = (CONTENT_WIDTH - FEATURE_GAP) / 2f;
 
@@ -77,7 +75,6 @@ public final class PdfReportWriter {
                 DistributionDimension.LOT_SIZE,
                 DistributionDimension.DISTANCE_TO_CITY_CENTER,
                 DistributionDimension.SCHOOL_RATING));
-        drawOverflowCharts(layout, report);
         drawScenarioPage(layout, report);
         pages = List.copyOf(layout.pages());
       }
@@ -313,9 +310,6 @@ public final class PdfReportWriter {
 
   private static float featurePanelHeight(DistributionResponse response) {
     int count = response == null ? 0 : response.buckets().size();
-    if (count > MAX_COMPACT_BUCKETS) {
-      return 78f;
-    }
     return 50f + 18f * Math.max(1, count);
   }
 
@@ -355,19 +349,6 @@ public final class PdfReportWriter {
     }
 
     List<DistributionBucket> buckets = response.buckets();
-    if (buckets.size() > MAX_COMPACT_BUCKETS) {
-      drawText(
-          layout.stream(),
-          layout.bodyFont(),
-          9f,
-          x + 10,
-          top - 43,
-          buckets.size() + " buckets continue on detail pages.",
-          MUTED_R,
-          MUTED_G,
-          MUTED_B);
-      return;
-    }
 
     float headerY = top - 34;
     drawText(
@@ -679,60 +660,6 @@ public final class PdfReportWriter {
         TEXT_R,
         TEXT_G,
         TEXT_B);
-  }
-
-  private static void drawOverflowCharts(PdfLayout layout, ReportData report) throws IOException {
-    for (DistributionDimension dimension :
-        List.of(
-            DistributionDimension.SQUARE_FOOTAGE,
-            DistributionDimension.BEDROOMS,
-            DistributionDimension.BATHROOMS,
-            DistributionDimension.YEAR_BUILT,
-            DistributionDimension.LOT_SIZE,
-            DistributionDimension.DISTANCE_TO_CITY_CENTER,
-            DistributionDimension.SCHOOL_RATING)) {
-      DistributionResponse response = report.distributions().get(dimension);
-      if (response == null || response.buckets().size() <= MAX_COMPACT_BUCKETS) {
-        continue;
-      }
-      List<DistributionBucket> buckets = response.buckets();
-      int maximumCount = maximumCount(buckets);
-      for (int start = 0; start < buckets.size(); start += OVERFLOW_ROWS_PER_PAGE) {
-        int end = Math.min(start + OVERFLOW_ROWS_PER_PAGE, buckets.size());
-        String title =
-            dimensionLabel(dimension)
-                + " distribution"
-                + (start == 0 ? " - detail" : " (continued)");
-        layout.startSectionPage(
-            title,
-            "Property counts and average historical price by "
-                + dimensionLabel(dimension).toLowerCase(Locale.ROOT)
-                + " bucket.");
-        float headerY = layout.y();
-        drawWideTableHeader(layout.stream(), layout.boldFont(), headerY);
-        float rowY = headerY - 22f;
-        for (int i = start; i < end; i++) {
-          drawWideBucketRow(
-              layout.stream(),
-              layout.bodyFont(),
-              buckets.get(i),
-              maximumCount,
-              MARGIN,
-              rowY,
-              dimension);
-          rowY -= 24f;
-        }
-        layout.setY(rowY - 8f);
-      }
-    }
-  }
-
-  private static void drawWideTableHeader(PDPageContentStream stream, PDFont font, float y)
-      throws IOException {
-    drawText(stream, font, 8f, MARGIN + 12, y, "Bucket", MUTED_R, MUTED_G, MUTED_B);
-    drawText(stream, font, 8f, MARGIN + 383, y, "Properties", MUTED_R, MUTED_G, MUTED_B);
-    drawText(
-        stream, font, 7.2f, MARGIN + 432, y, "Average historical price", MUTED_R, MUTED_G, MUTED_B);
   }
 
   private static void drawWideBucketRow(
