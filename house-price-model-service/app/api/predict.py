@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Body, HTTPException, status
+from fastapi.openapi.models import Example
 
 from app.config import get_batch_prediction_limit
 from app.model.predictor import predict_prices
@@ -9,7 +10,7 @@ from app.schemas.prediction import HTTPValidationError, HousingFeatures, Predict
 
 router = APIRouter(prefix="/api/v1", tags=["Prediction"])
 
-PREDICTION_REQUEST_EXAMPLES = {
+PREDICTION_REQUEST_EXAMPLES: dict[str, Example] = {
     "single_property": {
         "summary": "Single property",
         "value": {

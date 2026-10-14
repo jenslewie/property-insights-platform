@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi.openapi.models import Example
 
 from app.config import get_settings
 from app.dependencies import get_estimate_service
@@ -13,7 +14,7 @@ router = APIRouter(
     tags=["Estimate"],
 )
 
-ESTIMATE_REQUEST_EXAMPLES = {
+ESTIMATE_REQUEST_EXAMPLES: dict[str, Example] = {
     "single_property": {
         "summary": "Single property",
         "value": {
